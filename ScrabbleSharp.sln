@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrabbleSharp.Engine", "ScrabbleSharp.Engine\ScrabbleSharp.Engine.csproj", "{72173DA8-8B9E-442B-AF74-7351578910C6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrabbleSharp.Gateway", "ScrabbleSharp.Gateway\ScrabbleSharp.Gateway.csproj", "{1251FF46-DFAD-4477-981D-3EB9ACC24981}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrabbleSharp.Contracts", "ScrabbleSharp.Contracts\ScrabbleSharp.Contracts.csproj", "{9B9CE776-959E-4F91-82B3-BF45CE0DE9E0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{72173DA8-8B9E-442B-AF74-7351578910C6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{72173DA8-8B9E-442B-AF74-7351578910C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{72173DA8-8B9E-442B-AF74-7351578910C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{72173DA8-8B9E-442B-AF74-7351578910C6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1251FF46-DFAD-4477-981D-3EB9ACC24981}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1251FF46-DFAD-4477-981D-3EB9ACC24981}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1251FF46-DFAD-4477-981D-3EB9ACC24981}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1251FF46-DFAD-4477-981D-3EB9ACC24981}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9B9CE776-959E-4F91-82B3-BF45CE0DE9E0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9B9CE776-959E-4F91-82B3-BF45CE0DE9E0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9B9CE776-959E-4F91-82B3-BF45CE0DE9E0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9B9CE776-959E-4F91-82B3-BF45CE0DE9E0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

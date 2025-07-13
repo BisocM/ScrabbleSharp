@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>default</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.17"/>
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="Dictionaries\COLLINS_2019.txt"/>
+        <EmbeddedResource Include="Dictionaries\SOWPODS.txt"/>
+        <EmbeddedResource Include="Dictionaries\TWL06.txt"/>
+        <EmbeddedResource Include="Dictionaries\WORDNIK_21.txt"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\ScrabbleSharp.Contracts\ScrabbleSharp.Contracts.csproj"/>
+    </ItemGroup>
+
+</Project>

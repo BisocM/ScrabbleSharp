@@ -1,0 +1,43 @@
+﻿syntax = "proto3";
+package ScrabbleSharp;
+option csharp_namespace = "ScrabbleSharp.Contracts.Protos";
+
+enum Multiplier {
+  NONE            = 0;
+  DOUBLE_LETTER   = 1;
+  TRIPLE_LETTER   = 2;
+  QUADRUPLE_LETTER= 3;
+  DOUBLE_WORD     = 4;
+  TRIPLE_WORD     = 5;
+  QUADRUPLE_WORD  = 6;
+}
+
+enum Direction { UP = 0; DOWN = 1; LEFT = 2; RIGHT = 3; }
+
+message SolveRequest  { string board = 1; string rack = 2; }
+message Move          { string word = 1; uint32 startRow = 2; uint32 startCol = 3; bool horizontal = 4; uint32 score = 5; string definition = 6; }
+message SolveResponse { repeated Move moves = 1; }
+
+message LayoutRequest  { uint32 rows = 1; uint32 cols = 2; }
+message LayoutResponse {
+  uint32 rows = 1;
+  uint32 cols = 2;
+  repeated Multiplier multipliers = 3; // rows × cols, row-major
+  bool expandable = 4;
+}
+
+message ExpandRequest { Direction dir = 1; }
+
+message ExpandDelta    {
+  uint32 totalRows = 1;  uint32 totalCols = 2;
+  sint32 shiftRow  = 3;  sint32 shiftCol  = 4;
+  uint32 offsetRow = 5;  uint32 offsetCol = 6;
+  uint32 rows = 7;       uint32 cols = 8;
+  repeated Multiplier multipliers = 9;
+}
+
+service ScrabbleSolver {
+  rpc Solve     (SolveRequest)  returns (SolveResponse);
+  rpc GetLayout (LayoutRequest) returns (LayoutResponse);
+  rpc Expand    (ExpandRequest) returns (ExpandDelta);
+}

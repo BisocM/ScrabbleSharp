@@ -1,0 +1,9 @@
+version: v1
+plugins:
+  - plugin: es               # protoc-gen-es
+    out: src/proto
+    opt: target=ts
+
+  - plugin: connect-es       # protoc-gen-connect-es
+    out: src/proto
+    opt: target=ts

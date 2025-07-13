@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Google.Protobuf" Version="3.30.2"/>
+        <PackageReference Include="Grpc.AspNetCore" Version="2.71.0"/>
+        <PackageReference Include="Grpc.AspNetCore.Web" Version="2.71.0"/>
+        <PackageReference Include="Grpc.Core.Api" Version="2.71.0"/>
+        <PackageReference Include="Grpc.Net.Common" Version="2.71.0"/>
+        <PackageReference Include="Grpc.Tools" Version="2.71.0"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Protobuf Include="Protos\ScrabbleSharp.proto">
+            <Generator>MSBuild:Compile</Generator>
+        </Protobuf>
+    </ItemGroup>
+
+</Project>
