@@ -77,19 +77,12 @@ const Board: React.FC<Props> = ({
      * visible area of the board remains centered after new rows or columns are added.
      */
     useEffect(() => {
-        if (!prevShift) return;
-
-        const yShiftDelta = shiftRow - prevShift.shiftRow;
-        const xShiftDelta = shiftCol - prevShift.shiftCol;
-
-        // Adjust pan offset to counteract the shift from expansion.
-        if (yShiftDelta > 0) {
-            setPanOffset(p => ({ ...p, y: p.y - (yShiftDelta * TILE_SIZE * scale) }));
-        }
-        if (xShiftDelta > 0) {
-            setPanOffset(p => ({ ...p, x: p.x - (xShiftDelta * TILE_SIZE * scale) }));
-        }
-    }, [shiftRow, shiftCol, scale, prevShift]);
+        const el = containerRef.current;
+        if (!el) return;
+        // Non-passive wheel listener so preventDefault() works
+        el.addEventListener("wheel", handleWheel, { passive: false });
+        return () => el.removeEventListener("wheel", handleWheel);
+    }, []);
 
     // --- BOARD MODIFICATION LOGIC ---
 
@@ -209,7 +202,8 @@ const Board: React.FC<Props> = ({
     };
 
     /** Handles mouse wheel events for zooming. */
-    const handleWheel = (event: ReactWheelEvent) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const handleWheel = (event: WheelEvent) => {
         event.preventDefault();
         onZoom(event.deltaY < 0 ? 0.1 : -0.1);
     };
@@ -276,8 +270,8 @@ const Board: React.FC<Props> = ({
 
     return (
         <div
+            ref={containerRef}
             onMouseDown={handleMouseDown}
-            onWheel={handleWheel}
             className="relative overflow-hidden rounded-xl border border-yellow-200 dark:border-green-800/30 bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-green-900 dark:to-green-800 shadow-lg select-none w-full h-[38rem] cursor-grab active:cursor-grabbing"
         >
             <div
