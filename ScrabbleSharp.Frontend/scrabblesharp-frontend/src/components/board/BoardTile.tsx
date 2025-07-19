@@ -1,15 +1,13 @@
-import React, {KeyboardEvent as ReactKeyboardEvent} from "react";
+import React from "react";
 import {letterScores} from "@/data/letterScores";
 import clsx from "clsx";
 
-// Represents a placed tile on the board.
 interface Cell {
     letter: string;
     isBlank: boolean;
 }
 
 interface Props {
-    id: string;
     cell: Cell | null;
     multiplier: string;
     isCenter: boolean;
@@ -18,11 +16,9 @@ interface Props {
     arrowIndicator?: string;
     ghostLetter?: string;
     onClick: () => void;
-    onKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
     style?: React.CSSProperties;
 }
 
-// Maps multiplier codes to Tailwind CSS background color classes.
 const multiplierColorMap: Record<string, string> = {
     "": "bg-[--color-surface] dark:bg-green-400/10",
     "2L": "bg-[--color-bonus2L] text-sky-900 dark:bg-sky-600/80 dark:text-white",
@@ -33,25 +29,13 @@ const multiplierColorMap: Record<string, string> = {
     "4W": "bg-[--color-bonus3W] text-red-900 dark:bg-red-900 dark:text-white",
 };
 
-/**
- * Computes the score to display on a tile, considering letter and word multipliers.
- * Note: This is for display only and doesn't affect the actual move score calculation.
- * @param letter The letter on the tile.
- * @param multiplier The multiplier of the square.
- * @returns The calculated score to display.
- */
 const computeDisplayedScore = (letter: string, multiplier: string): number => {
     const baseScore = letterScores[letter.toUpperCase()] ?? 0;
     const factor = /^[234]L$/.test(multiplier) ? parseInt(multiplier[0], 10) : 1;
     return baseScore * factor;
 };
 
-/**
- * Renders a single tile on the game board. It can represent an empty square,
- * a placed tile, a selected square, or a previewed move.
- */
 const BoardTile: React.FC<Props> = ({
-                                        id,
                                         cell,
                                         multiplier,
                                         isCenter,
@@ -60,7 +44,6 @@ const BoardTile: React.FC<Props> = ({
                                         arrowIndicator,
                                         ghostLetter,
                                         onClick,
-                                        onKeyDown,
                                         style,
                                     }) => {
     const baseClasses =
@@ -73,14 +56,10 @@ const BoardTile: React.FC<Props> = ({
             ? "relative z-20 ring-2 ring-teal-400"
             : "";
 
-    // Render an arrow if the tile is selected, indicating input direction.
     if (arrowIndicator) {
         return (
             <div
-                id={id}
-                tabIndex={0}
                 onClick={onClick}
-                onKeyDown={onKeyDown}
                 className={clsx(baseClasses, multiplierColorMap[multiplier], ringClasses, "transition-shadow")}
                 style={style}
             >
@@ -89,43 +68,37 @@ const BoardTile: React.FC<Props> = ({
         );
     }
 
-    // Render an empty tile.
     if (!cell) {
         return (
             <div
-                id={id}
-                tabIndex={0}
                 onClick={onClick}
-                onKeyDown={onKeyDown}
                 className={clsx(baseClasses, multiplierColorMap[multiplier], ringClasses, "transition-shadow")}
                 style={style}
             >
                 {ghostLetter ? (
-                    // Display a ghost letter if part of a move preview.
+
                     <span className="font-bold text-slate-500 dark:text-slate-300 text-lg opacity-80">
                         {ghostLetter}
                     </span>
                 ) : (
-                    // Display the multiplier text or a star for the center square.
+
                     <span className="text-sm font-bold opacity-90">
-                        {isCenter ? "★" : multiplier}
-                    </span>
-                )}
+                {isCenter ? "★" : multiplier}
+            </span>
+                )
+                }
             </div>
-        );
+        )
+            ;
     }
 
-    // Render a placed tile with its letter and score.
     const displayedScore = cell.isBlank
         ? 0
         : computeDisplayedScore(cell.letter, multiplier);
 
     return (
         <div
-            id={id}
-            tabIndex={0}
             onClick={onClick}
-            onKeyDown={onKeyDown}
             className={clsx(
                 baseClasses,
                 "bg-gradient-to-br from-amber-200 to-amber-300 dark:from-amber-400 dark:to-amber-500",
