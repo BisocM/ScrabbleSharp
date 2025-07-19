@@ -10,7 +10,7 @@ import Toggle from "@/components/ui/Toggle";
 import Button from "@/components/ui/Button";
 import ExpandButton from "@/components/board/ExpandButton";
 import HowToUse from "@/components/info/HowToUse";
-import Logo from "@/components/ui/Logo"; // Import the new component
+import Logo from "@/components/ui/Logo";
 
 import { useBoardState, useBoardDispatch } from "@/app/board/hooks";
 import { useRack, useRackDispatch } from "@/app/rack/hooks";
@@ -44,7 +44,6 @@ import type { Board as BoardType } from "@/app/board/types";
 import { getModeInfo } from "@/data/gameModes";
 
 const GamePage: React.FC = () => {
-
     const {
         board,
         layout,
@@ -97,7 +96,7 @@ const GamePage: React.FC = () => {
     }, [mode, boardDispatch]);
 
     useEffect(() => {
-        resetBoardAndLayout();
+        void resetBoardAndLayout();
     }, [resetBoardAndLayout]);
 
     const invalidateMoves = () => {
@@ -220,11 +219,10 @@ const GamePage: React.FC = () => {
     };
 
     const handleClearGame = async () => {
-
         if (!isClearArmed) {
             setIsClearArmed(true);
             toast("Click Clear once more to confirm.", { icon: "!" });
-            setTimeout(() => setIsClearArmed(false), 3000); // Reset after 3 seconds.
+            setTimeout(() => setIsClearArmed(false), 3000);
             return;
         }
 
@@ -239,7 +237,7 @@ const GamePage: React.FC = () => {
     const handleZoomOut = () => setZoom((z) => clampZoom(z - 0.1));
     const handleWheelZoom = (delta: number) => setZoom((z) => clampZoom(z + delta));
 
-    const { initialRows, initialCols } = getModeInfo(mode);
+    const { initialRows, initialCols } = getModeInfo(mode) || getModeInfo("letterleague_classic");
     const trueCenter = {
         row: Math.floor(initialRows / 2) + shiftRow,
         col: Math.floor(initialCols / 2) + shiftCol,
@@ -256,25 +254,43 @@ const GamePage: React.FC = () => {
                     <div className="max-w-7xl mx-auto flex items-center justify-between p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg shadow-md backdrop-blur-sm">
                         <Logo />
                         <div className="flex items-center gap-2">
-                            <Button variant="secondary" onClick={handleClearGame}>
-                                {isClearArmed ? "Confirm?" : "Clear"}
+                            <Button
+                                variant="secondary"
+                                onClick={handleClearGame}
+                                className="!p-2 sm:px-4"
+                                title="Clear Board & Rack"
+                            >
+                                {isClearArmed ? (
+                                    <span className="px-1">Confirm?</span>
+                                ) : (
+                                    <>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                        <span className="hidden sm:inline">Clear</span>
+                                    </>
+                                )}
                             </Button>
                             <Toggle />
                             <Button
                                 variant="secondary"
                                 onClick={() => setShowSettings(true)}
+                                className="!p-2 sm:px-4"
+                                title="Settings"
                             >
-                                Settings
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924-1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <span className="hidden sm:inline">Settings</span>
                             </Button>
                         </div>
                     </div>
                 </header>
 
                 <main className="flex-grow w-full flex flex-col lg:flex-row items-start justify-center gap-8">
-
-                    {/* Left Column: WordList and HowToUse */}
                     <div className="w-full lg:w-80 flex flex-col order-2 lg:order-1 gap-6">
-                        <div className="h-[38rem] bg-white dark:bg-slate-800 rounded-lg shadow-lg flex flex-col">
+                        <div className="h-[500px] lg:h-[38rem] bg-white dark:bg-slate-800 rounded-lg shadow-lg flex flex-col">
                             <div className="p-4 border-b border-slate-200 dark:border-slate-700 shrink-0">
                                 <h2 className="text-lg font-bold">Possible Moves</h2>
                             </div>
@@ -292,7 +308,6 @@ const GamePage: React.FC = () => {
                         <HowToUse />
                     </div>
 
-                    {/* Right Column: Board, Rack, and Controls */}
                     <div className="w-full lg:w-[44rem] flex flex-col items-center justify-start gap-6 order-1 lg:order-2">
                         <div className="relative w-full">
                             <div className="absolute right-1 top-1 flex flex-col gap-1 z-20">

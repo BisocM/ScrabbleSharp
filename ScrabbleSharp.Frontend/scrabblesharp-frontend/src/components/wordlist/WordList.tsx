@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import type { Move } from "@/api/solverApi";
-import type { MovePreview } from "@/app/board/types";
+import React, {useState} from "react";
+import type {Move} from "@/api/solverApi";
+import type {MovePreview} from "@/app/board/types";
 
 interface Props {
     moves: Move[];
@@ -57,7 +57,12 @@ const WordList: React.FC<Props> = ({
         return sortOrder === "desc" ? -difference : difference;
     });
 
-    const handleMouseEnter = (move: Move) => onHover({ word: move.word, startRow: move.startRow, startCol: move.startCol, horizontal: move.horizontal });
+    const handleMouseEnter = (move: Move) => onHover({
+        word: move.word,
+        startRow: move.startRow,
+        startCol: move.startCol,
+        horizontal: move.horizontal
+    });
     const handleMouseLeave = () => onHover(null);
 
     const emptyListText = solveAttempted
@@ -68,16 +73,22 @@ const WordList: React.FC<Props> = ({
         <div className="flex-grow overflow-y-auto">
             <table className="w-full table-fixed text-sm border-separate border-spacing-0">
                 <colgroup>
-                    <col style={{ width: "50%" }} />
-                    <col style={{ width: "25%" }} />
-                    <col style={{ width: "25%" }} />
+                    <col style={{width: "50%"}}/>
+                    <col style={{width: "25%"}}/>
+                    <col style={{width: "25%"}}/>
                 </colgroup>
 
                 <thead className="sticky top-0 z-10">
                 <tr className="bg-slate-100 dark:bg-slate-700">
-                    <th className="px-4 py-2 font-semibold cursor-pointer select-none border-b border-slate-200 dark:border-slate-700 text-left" onClick={() => handleSort("word")}>Word <span className="inline-block w-4 text-slate-400">{getSortCaret("word")}</span></th>
-                    <th className="px-4 py-2 font-semibold cursor-pointer select-none border-b border-slate-200 dark:border-slate-700 text-right" onClick={() => handleSort("score")}>Pts <span className="inline-block w-4 text-slate-400">{getSortCaret("score")}</span></th>
-                    <th className="px-4 py-2 font-semibold cursor-pointer select-none border-b border-slate-200 dark:border-slate-700 text-right" onClick={() => handleSort("length")}>Len <span className="inline-block w-4 text-slate-400">{getSortCaret("length")}</span></th>
+                    <th className="px-4 py-2 font-semibold cursor-pointer select-none border-b border-slate-200 dark:border-slate-700 text-left"
+                        onClick={() => handleSort("word")}>Word <span
+                        className="inline-block w-4 text-slate-400">{getSortCaret("word")}</span></th>
+                    <th className="px-4 py-2 font-semibold cursor-pointer select-none border-b border-slate-200 dark:border-slate-700 text-right"
+                        onClick={() => handleSort("score")}>Pts <span
+                        className="inline-block w-4 text-slate-400">{getSortCaret("score")}</span></th>
+                    <th className="px-4 py-2 font-semibold cursor-pointer select-none border-b border-slate-200 dark:border-slate-700 text-right"
+                        onClick={() => handleSort("length")}>Len <span
+                        className="inline-block w-4 text-slate-400">{getSortCaret("length")}</span></th>
                 </tr>
                 </thead>
 
@@ -85,12 +96,19 @@ const WordList: React.FC<Props> = ({
                 {sortedMoves.map((move, index) => (
                     <tr key={index} onMouseEnter={() => handleMouseEnter(move)} onMouseLeave={handleMouseLeave}
                         className="group cursor-pointer transition-colors hover:bg-teal-50 dark:hover:bg-teal-800/50">
-                        <td className="px-4 py-2 border-b border-slate-100 dark:border-slate-700/50 truncate font-medium" onClick={() => onCommitMove(move)}>{move.word}</td>
-                        <td className="px-4 py-2 border-b border-slate-100 dark:border-slate-700/50 text-right" onClick={() => onCommitMove(move)}>{move.score}</td>
-                        <td className="px-4 py-2 border-b border-slate-100 dark:border-slate-700/50 flex justify-end items-center" onClick={() => onCommitMove(move)}>
+                        <td className="px-4 py-2 border-b border-slate-100 dark:border-slate-700/50 truncate font-medium"
+                            onClick={() => onCommitMove(move)}>{move.word}</td>
+                        <td className="px-4 py-2 border-b border-slate-100 dark:border-slate-700/50 text-right"
+                            onClick={() => onCommitMove(move)}>{move.score}</td>
+                        <td className="px-4 py-2 border-b border-slate-100 dark:border-slate-700/50 flex justify-end items-center"
+                            onClick={() => onCommitMove(move)}>
                             <span>{move.word.length}</span>
-                            <button onClick={event => { event.stopPropagation(); onSelectForDefinition(move); }}
-                                    className="ml-2 text-xs opacity-0 group-hover:opacity-60 hover:opacity-100">📖</button>
+                            <button onClick={event => {
+                                event.stopPropagation();
+                                onSelectForDefinition(move);
+                            }}
+                                    className="ml-2 text-xs opacity-0 group-hover:opacity-60 hover:opacity-100">📖
+                            </button>
                         </td>
                     </tr>
                 ))}

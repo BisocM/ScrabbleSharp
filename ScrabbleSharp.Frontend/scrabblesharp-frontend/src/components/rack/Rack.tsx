@@ -1,4 +1,4 @@
-import React, { useRef, useState, KeyboardEvent as ReactKeyboardEvent } from "react";
+import React, {useRef, useState, KeyboardEvent as ReactKeyboardEvent} from "react";
 import RackTile from "./RackTile";
 
 interface Props {
@@ -14,7 +14,7 @@ const RACK_CAPACITY = 7;
  * A component that displays the player's tile rack and handles keyboard input
  * for adding, removing, and changing tiles.
  */
-const Rack: React.FC<Props> = ({ rack, onRackChange, className }) => {
+const Rack: React.FC<Props> = ({rack, onRackChange, className}) => {
     const rackContainerRef = useRef<HTMLDivElement>(null);
 
     // Tracks how many tiles have been typed in the current focus session.
@@ -90,8 +90,8 @@ const Rack: React.FC<Props> = ({ rack, onRackChange, className }) => {
                 onClick={() => rackContainerRef.current?.focus()}
                 className="flex p-1 outline-none focus:ring-2 ring-offset-4 ring-offset-amber-700 focus:ring-blue-400 rounded-md"
             >
-                {Array.from({ length: RACK_CAPACITY }).map((_, index) => (
-                    <RackTile key={index} character={rack[index] ?? null} />
+                {Array.from({length: RACK_CAPACITY}).map((_, index) => (
+                    <RackTile key={index} character={rack[index] ?? null}/>
                 ))}
             </div>
         </div>

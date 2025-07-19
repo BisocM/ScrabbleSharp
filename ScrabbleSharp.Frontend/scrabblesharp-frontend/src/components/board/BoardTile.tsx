@@ -1,5 +1,5 @@
-import React, { KeyboardEvent as ReactKeyboardEvent } from "react";
-import { letterScores } from "@/data/letterScores";
+import React, {KeyboardEvent as ReactKeyboardEvent} from "react";
+import {letterScores} from "@/data/letterScores";
 import clsx from "clsx";
 
 // Represents a placed tile on the board.

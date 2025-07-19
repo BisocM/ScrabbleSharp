@@ -1,10 +1,10 @@
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import type { Board, MovePreview } from "./types";
-import type { Move } from "@/api/solverApi";
-import { safeGet } from "@/utils/storage";
+import {createSlice, PayloadAction} from "@reduxjs/toolkit";
+import type {Board, MovePreview} from "./types";
+import type {Move} from "@/api/solverApi";
+import {safeGet} from "@/utils/storage";
 
 export const createEmptyBoard = (rows = 15, cols = 15): Board =>
-    Array.from({ length: rows }, () => Array.from({ length: cols }, () => null));
+    Array.from({length: rows}, () => Array.from({length: cols}, () => null));
 
 export type BandDirection = "up" | "down" | "left" | "right";
 
@@ -35,7 +35,7 @@ const initialState: BoardState = safeGet<BoardState>("boardState", {
     moves: [],
     preview: null,
     zoom: 1,
-    bands: { up: 0, down: 0, left: 0, right: 0 },
+    bands: {up: 0, down: 0, left: 0, right: 0},
     // Initialize shift values.
     shiftRow: 0,
     shiftCol: 0,
@@ -75,7 +75,7 @@ const boardSlice = createSlice({
         },
 
         resetBands(state) {
-            state.bands = { up: 0, down: 0, left: 0, right: 0 };
+            state.bands = {up: 0, down: 0, left: 0, right: 0};
             // Also reset the shift values to their defaults.
             state.shiftRow = 0;
             state.shiftCol = 0;

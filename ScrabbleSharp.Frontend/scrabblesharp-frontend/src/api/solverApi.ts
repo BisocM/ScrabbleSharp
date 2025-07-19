@@ -1,13 +1,13 @@
-import { createGrpcWebTransport } from "@connectrpc/connect-web";
-import { createClient, Client } from "@connectrpc/connect";
+import {createGrpcWebTransport} from "@connectrpc/connect-web";
+import {createClient, Client} from "@connectrpc/connect";
 import {
     Multiplier, Direction,
     SolveRequest, LayoutRequest, ExpandRequest,
     ExpandDelta, LayoutResponse, SolveResponse,
     Move as MoveMessage,
 } from "@/api/grpc/ScrabbleSharp_pb";
-import { ScrabbleSolver } from "@/api/grpc/ScrabbleSharp_connect";
-import { GameModeId } from "@/data/gameModes";
+import {ScrabbleSolver} from "@/api/grpc/ScrabbleSharp_connect";
+import {GameModeId} from "@/data/gameModes";
 
 // Configure the gRPC-web transport to the backend server.
 const transport = createGrpcWebTransport({
@@ -93,9 +93,9 @@ const multiplierToCode = (multiplier: Multiplier): string =>
  * @returns A 2D string array representing the multiplier layout.
  */
 export const toMatrix = (
-    { rows, cols, multipliers }: LayoutResponse | ExpandDelta,
+    {rows, cols, multipliers}: LayoutResponse | ExpandDelta,
 ): string[][] => {
-    const grid = Array.from({ length: rows }, () => Array(cols).fill(""));
+    const grid = Array.from({length: rows}, () => Array(cols).fill(""));
     multipliers.forEach((multiplier, index) => {
         grid[Math.floor(index / cols)][index % cols] = multiplierToCode(multiplier);
     });
@@ -112,10 +112,10 @@ export const toMatrix = (
 export async function getLayoutMatrix(
     mode: GameModeId,
 ): Promise<LayoutData> {
-    const layoutRequest = new LayoutRequest({ rows: 0, cols: 0 });
+    const layoutRequest = new LayoutRequest({rows: 0, cols: 0});
     const response = await client.getLayout(
         layoutRequest,
-        { headers: { "x-mode": mode } },
+        {headers: {"x-mode": mode}},
     );
     return {
         matrix: toMatrix(response),
@@ -137,7 +137,7 @@ export async function solveRack(
     mode: GameModeId,
     bands: BandCounters,
 ): Promise<Move[]> {
-    const solveRequest = new SolveRequest({ board: boardString, rack: rackString });
+    const solveRequest = new SolveRequest({board: boardString, rack: rackString});
     const response: SolveResponse = await client.solve(solveRequest, {
         headers: {
             "x-mode": mode,
@@ -148,7 +148,7 @@ export async function solveRack(
         },
     });
     return response.moves.map(
-        (moveMessage: MoveMessage): Move => ({ ...moveMessage })
+        (moveMessage: MoveMessage): Move => ({...moveMessage})
     );
 }
 
@@ -170,7 +170,7 @@ export async function expandLayout(
         : direction === "down" ? Direction.DOWN
             : direction === "left" ? Direction.LEFT
                 : Direction.RIGHT;
-    const expandRequest = new ExpandRequest({ dir: dirEnum });
+    const expandRequest = new ExpandRequest({dir: dirEnum});
 
     const response: ExpandDelta = await client.expand(expandRequest, {
         headers: {

@@ -1,4 +1,4 @@
-import React, { ReactElement } from "react";
+import React, {ReactElement} from "react";
 
 interface Props {
     text: string;
@@ -10,7 +10,7 @@ interface Props {
  * user hovers over the child element. This is achieved using the `group`
  * and `group-hover` utility classes from Tailwind CSS.
  */
-const Tooltip: React.FC<Props> = ({ text, children }) => (
+const Tooltip: React.FC<Props> = ({text, children}) => (
     <span className="relative group">
         {children}
         <span

@@ -1,5 +1,5 @@
 import React from 'react';
-import { letterScores } from '@/data/letterScores';
+import {letterScores} from '@/data/letterScores';
 
 const Logo: React.FC = () => {
     const line1 = 'Scrabble'.split('');
@@ -24,10 +24,11 @@ const Logo: React.FC = () => {
                         className={`relative w-5 h-5 flex items-center justify-center rounded-sm shadow-sm select-none ${colorClass}`}
                         title={`${letter}: ${score} points`}
                     >
-            <span className="font-bold text-sm text-white" style={{ textShadow: '1px 1px 1px rgba(0,0,0,0.3)' }}>
+            <span className="font-bold text-sm text-white" style={{textShadow: '1px 1px 1px rgba(0,0,0,0.3)'}}>
               {letter}
             </span>
-                        <span className="absolute bottom-0 right-0.5 text-[0.5rem] font-bold text-white/90" style={{ textShadow: '1px 1px 1px rgba(0,0,0,0.3)' }}>
+                        <span className="absolute bottom-0 right-0.5 text-[0.5rem] font-bold text-white/90"
+                              style={{textShadow: '1px 1px 1px rgba(0,0,0,0.3)'}}>
               {score}
             </span>
                     </div>

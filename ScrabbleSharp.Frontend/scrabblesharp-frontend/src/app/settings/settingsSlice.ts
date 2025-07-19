@@ -1,6 +1,6 @@
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { safeGet } from "@/utils/storage";
-import { GameModeId } from "@/data/gameModes";
+import {createSlice, PayloadAction} from "@reduxjs/toolkit";
+import {safeGet} from "@/utils/storage";
+import {GameModeId} from "@/data/gameModes";
 
 // Defines the shape of the application's settings state.
 interface SettingsState {
@@ -38,7 +38,7 @@ const settingsSlice = createSlice({
 });
 
 // Export the action creators.
-export const { setMode, setLanguage, toggleTheme } = settingsSlice.actions;
+export const {setMode, setLanguage, toggleTheme} = settingsSlice.actions;
 
 // Export the reducer.
 export default settingsSlice.reducer;

@@ -1,13 +1,13 @@
-import React, { useEffect } from "react";
-import { useSettings, useSettingsDispatch } from "@/app/settings/hooks";
-import { toggleTheme } from "@/app/settings/settingsSlice";
+import React, {useEffect} from "react";
+import {useSettings, useSettingsDispatch} from "@/app/settings/hooks";
+import {toggleTheme} from "@/app/settings/settingsSlice";
 import Button from "./Button";
 
 /**
  * A button component to toggle between light and dark themes.
  */
 const Toggle: React.FC = () => {
-    const { theme } = useSettings();
+    const {theme} = useSettings();
     const dispatch = useSettingsDispatch();
 
     // Effect to apply the 'dark' class to the root <html> element when the theme changes.

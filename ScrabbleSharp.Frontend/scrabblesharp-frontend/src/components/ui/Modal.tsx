@@ -1,4 +1,4 @@
-import React, { useEffect, ReactNode, MouseEvent as ReactMouseEvent } from "react";
+import React, {useEffect, ReactNode, MouseEvent as ReactMouseEvent} from "react";
 import Button from "./Button";
 
 interface Props {

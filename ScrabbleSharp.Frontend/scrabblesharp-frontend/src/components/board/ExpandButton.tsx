@@ -20,7 +20,7 @@ const directionGlyphMap: Record<ExpandDirection, string> = {
 /**
  * A button used to expand the game board in one of the four cardinal directions.
  */
-const ExpandButton: React.FC<Props> = ({ direction, onClick, className = "" }) => (
+const ExpandButton: React.FC<Props> = ({direction, onClick, className = ""}) => (
     <button
         aria-label={`expand ${direction}`}
         onClick={onClick}

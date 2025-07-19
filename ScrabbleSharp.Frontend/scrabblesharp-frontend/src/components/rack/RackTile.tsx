@@ -1,5 +1,5 @@
 import React from "react";
-import { letterScores } from "@/data/letterScores";
+import {letterScores} from "@/data/letterScores";
 
 interface Props {
     character: string | null;
@@ -9,10 +9,10 @@ interface Props {
  * Renders a single tile in the player's rack. It can be an empty slot,
  * a lettered tile, or a blank tile.
  */
-const RackTile: React.FC<Props> = ({ character }) => {
+const RackTile: React.FC<Props> = ({character}) => {
     // Render an empty slot if no character is provided.
     if (!character) {
-        return <div className="w-10 h-10 m-0.5 bg-black/20 rounded-md shadow-inner" />;
+        return <div className="w-10 h-10 m-0.5 bg-black/20 rounded-md shadow-inner"/>;
     }
 
     const isBlank = character === "_";

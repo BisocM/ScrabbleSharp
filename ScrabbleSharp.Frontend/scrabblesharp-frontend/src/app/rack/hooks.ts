@@ -1,5 +1,5 @@
-import { useSelector, useDispatch } from "react-redux";
-import type { RootState, AppDispatch } from "@/app/store";
+import {useSelector, useDispatch} from "react-redux";
+import type {RootState, AppDispatch} from "@/app/store";
 
 /**
  * A custom hook to access the player's rack from the Redux store.

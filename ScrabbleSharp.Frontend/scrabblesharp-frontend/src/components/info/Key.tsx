@@ -7,7 +7,7 @@ interface Props extends React.HTMLAttributes<HTMLElement> {
     as?: 'kbd' | 'span';
 }
 
-const Key: React.FC<Props> = ({ children, className, variant = 'standard', as = 'kbd', ...props }) => {
+const Key: React.FC<Props> = ({children, className, variant = 'standard', as = 'kbd', ...props}) => {
     const Tag = as;
     const baseClasses = "inline-flex items-center justify-center font-sans font-semibold bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm";
 

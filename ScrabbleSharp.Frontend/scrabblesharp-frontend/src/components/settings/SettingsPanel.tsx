@@ -2,9 +2,9 @@ import React from "react";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 
-import { useSettings, useSettingsDispatch } from "@/app/settings/hooks";
-import { setMode, setLanguage } from "@/app/settings/settingsSlice";
-import { GAME_MODES, GameModeId } from "@/data/gameModes";
+import {useSettings, useSettingsDispatch} from "@/app/settings/hooks";
+import {setMode, setLanguage} from "@/app/settings/settingsSlice";
+import {GAME_MODES, GameModeId} from "@/data/gameModes";
 
 interface Props {
     show: boolean;
@@ -14,8 +14,8 @@ interface Props {
 /**
  * A modal panel for changing application settings, such as game mode and language.
  */
-const SettingsPanel: React.FC<Props> = ({ show, onClose }) => {
-    const { mode, language } = useSettings();
+const SettingsPanel: React.FC<Props> = ({show, onClose}) => {
+    const {mode, language} = useSettings();
     const dispatch = useSettingsDispatch();
 
     const gameModeIds = Object.keys(GAME_MODES) as GameModeId[];
@@ -96,7 +96,7 @@ const SettingsPanel: React.FC<Props> = ({ show, onClose }) => {
                         ["en", "fr", "es"] as const,
                         language,
                         (selectedValue) => dispatch(setLanguage(selectedValue)),
-                        { en: "English", fr: "Français (soon)", es: "Español (soon)" },
+                        {en: "English", fr: "Français (soon)", es: "Español (soon)"},
                         (optionValue) => optionValue !== "en", // Disable non-English options for now
                     )}
                 </section>

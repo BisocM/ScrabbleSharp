@@ -1,4 +1,4 @@
-import type { Board } from "@/app/board/types";
+import type {Board} from "@/app/board/types";
 
 /**
  * Converts the 2D board array into a multi-line string format expected by the backend.
