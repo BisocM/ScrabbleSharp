@@ -9,18 +9,14 @@ namespace ScrabbleSharp.Gateway.Extensions;
 /// </summary>
 public static class BoardLayoutExtensions
 {
-    /// <summary>
-    ///     Hard upper bound for user-requested expansion: at most four bands
-    ///     (4-square rings) per cardinal direction for the lifetime of a board.
-    /// </summary>
     private const int MaxBandsPerDirection = 4;
 
     /// <summary>
-    ///     Expands the supplied <see cref="IExpandableBoardLayout" /> by the number
-    ///     of bands requested in <paramref name="bands" />, after validating that
-    ///     each component is within the allowed range <c>[0, MaxBandsPerDirection]</c>.
-    ///     A value outside that range results in <see cref="ArgumentOutOfRangeException" />.
+    ///     Applies a specified number of expansion bands to an <see cref="IExpandableBoardLayout" />.
     /// </summary>
+    /// <param name="expandableLayout">The layout to expand.</param>
+    /// <param name="bands">A tuple containing the number of bands to add in each direction (Up, Down, Left, Right).</param>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown if the number of bands in any direction is invalid.</exception>
     public static void ApplyBands(
         this IExpandableBoardLayout expandableLayout,
         (int Up, int Down, int Left, int Right) bands)
@@ -53,11 +49,11 @@ public static class BoardLayoutExtensions
     }
 
     /// <summary>
-    ///     Gets the coordinates used to trigger an expansion in a given direction.
+    ///     Gets the coordinates that will trigger an expansion in the specified direction.
     /// </summary>
     /// <param name="layout">The board layout.</param>
-    /// <param name="direction">The direction of expansion.</param>
-    /// <returns>A tuple containing the trigger row and column.</returns>
+    /// <param name="direction">The desired direction of expansion.</param>
+    /// <returns>A tuple (row, col) representing the trigger coordinates.</returns>
     public static (int row, int col) GetTriggerCoordinates(this IBoardLayout layout, Direction direction)
     {
         return direction switch
@@ -66,15 +62,16 @@ public static class BoardLayoutExtensions
             Direction.Down => (layout.Rows - 1, layout.Cols / 2),
             Direction.Left => (layout.Rows / 2, 0),
             Direction.Right => (layout.Rows / 2, layout.Cols - 1),
-            _ => (layout.Rows / 2, layout.Cols / 2) // Should not be reached
+            // Should not be reached for valid directions.
+            _ => (layout.Rows / 2, layout.Cols / 2)
         };
     }
 
     /// <summary>
-    ///     Converts a board layout to its protobuf <see cref="LayoutResponse" /> representation.
+    ///     Converts an <see cref="IBoardLayout" /> to its Protobuf <see cref="LayoutResponse" /> representation.
     /// </summary>
-    /// <param name="layout">The board layout to convert.</param>
-    /// <returns>A <see cref="LayoutResponse" /> message.</returns>
+    /// <param name="layout">The layout to convert.</param>
+    /// <returns>A <see cref="LayoutResponse" /> object.</returns>
     public static LayoutResponse ToLayoutResponse(this IBoardLayout layout)
     {
         var response = new LayoutResponse

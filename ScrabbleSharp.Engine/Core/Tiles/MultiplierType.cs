@@ -1,7 +1,7 @@
 ﻿namespace ScrabbleSharp.Engine.Core.Tiles;
 
 /// <summary>
-///     Represents the type of score multiplier on a board square.
+///     Enumerates the types of score multipliers that can be on a board square.
 /// </summary>
 public enum MultiplierType
 {
@@ -11,32 +11,32 @@ public enum MultiplierType
     None,
 
     /// <summary>
-    ///     Doubles the score of the letter placed on this square.
+    ///     Doubles the value of the letter placed on this square.
     /// </summary>
     DoubleLetter,
 
     /// <summary>
-    ///     Triples the score of the letter placed on this square.
+    ///     Triples the value of the letter placed on this square.
     /// </summary>
     TripleLetter,
 
     /// <summary>
-    ///     Quadruples the score of the letter placed on this square.
+    ///     Quadruples the value of the letter placed on this square.
     /// </summary>
     QuadrupleLetter,
 
     /// <summary>
-    ///     Doubles the score of the entire word containing this square.
+    ///     Doubles the value of the entire word.
     /// </summary>
     DoubleWord,
 
     /// <summary>
-    ///     Triples the score of the entire word containing this square.
+    ///     Triples the value of the entire word.
     /// </summary>
     TripleWord,
 
     /// <summary>
-    ///     Quadruples the score of the entire word containing this square.
+    ///     Quadruples the value of the entire word.
     /// </summary>
     QuadrupleWord
 }

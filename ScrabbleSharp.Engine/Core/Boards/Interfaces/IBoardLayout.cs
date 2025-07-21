@@ -3,39 +3,35 @@
 namespace ScrabbleSharp.Engine.Core.Boards.Interfaces;
 
 /// <summary>
-///     Defines the structure of a Scrabble board, including its dimensions and multiplier placements.
+///     Defines the contract for a board layout, specifying its dimensions, origin, and multiplier distribution.
 /// </summary>
 public interface IBoardLayout
 {
     /// <summary>
-    ///     Gets the number of rows on the board.
+    ///     Gets the total number of rows in the layout.
     /// </summary>
     int Rows { get; }
 
     /// <summary>
-    ///     Gets the number of columns on the board.
+    ///     Gets the total number of columns in the layout.
     /// </summary>
     int Cols { get; }
 
     /// <summary>
-    ///     Zero-based coordinates of the permanent start square (★).
-    ///     Implementations must guarantee these never change for the lifetime of the layout
-    ///     (even after any successful calls to <c>TryExpandAt</c>).
+    ///     Gets the row index of the board's origin (center square).
     /// </summary>
     int OriginRow { get; }
 
     /// <summary>
-    ///     Zero-based coordinates of the permanent start square (★).
-    ///     Implementations must guarantee these never change for the lifetime of the layout
-    ///     (even after any successful calls to <c>TryExpandAt</c>).
+    ///     Gets the column index of the board's origin (center square).
     /// </summary>
     int OriginCol { get; }
 
     /// <summary>
-    ///     Gets the multiplier type for a specific square.
+    ///     Gets the multiplier type for a specific square in the layout.
     /// </summary>
     /// <param name="row">The row index of the square.</param>
     /// <param name="column">The column index of the square.</param>
-    /// <returns>The <see cref="MultiplierType" /> at the specified location.</returns>
+    /// <returns>The <see cref="MultiplierType" /> at the specified coordinates.</returns>
     MultiplierType GetMultiplier(int row, int column);
 }

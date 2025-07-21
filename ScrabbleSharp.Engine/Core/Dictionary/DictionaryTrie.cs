@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 namespace ScrabbleSharp.Engine.Core.Dictionary;
 
 /// <summary>
-///     Represents a dictionary of words using a trie data structure for efficient lookups.
+///     Represents a dictionary of words using a Trie (prefix tree) data structure for efficient lookups.
 /// </summary>
 public sealed class DictionaryTrie
 {
@@ -17,27 +17,27 @@ public sealed class DictionaryTrie
     };
 
     /// <summary>
-    ///     Gets the root node of the trie.
+    ///     The root node of the trie.
     /// </summary>
     public Node Root { get; } = new();
 
     /// <summary>
-    ///     Retrieves the definition for a given word.
+    ///     Retrieves the definition for a given word, if it exists in the trie.
     /// </summary>
     /// <param name="word">The word to look up.</param>
-    /// <returns>The definition string if found; otherwise, null.</returns>
+    /// <returns>The definition string, or <c>null</c> if the word or its definition is not found.</returns>
     public string? GetDefinition(string word)
     {
         return Find(word)?.Definition;
     }
 
     /// <summary>
-    ///     Creates a DictionaryTrie from a word list file at the specified path.
+    ///     Creates a new <see cref="DictionaryTrie" /> by loading words from a specified file path.
     /// </summary>
-    /// <param name="path">The full path to the word list file.</param>
+    /// <param name="path">The path to the word list file.</param>
     /// <param name="maxLen">The maximum length of words to include.</param>
-    /// <returns>A new <see cref="DictionaryTrie" /> instance.</returns>
-    /// <exception cref="FileNotFoundException">Thrown if the file does not exist.</exception>
+    /// <returns>A new, populated <see cref="DictionaryTrie" />.</returns>
+    /// <exception cref="FileNotFoundException">Thrown if the specified file does not exist.</exception>
     public static DictionaryTrie FromFile(string path, int maxLen = int.MaxValue)
     {
         if (!File.Exists(path))
@@ -48,12 +48,12 @@ public sealed class DictionaryTrie
     }
 
     /// <summary>
-    ///     Creates a DictionaryTrie from an embedded resource word list.
+    ///     Creates a new <see cref="DictionaryTrie" /> by loading words from an embedded resource.
     /// </summary>
     /// <param name="list">The <see cref="WordList" /> to load.</param>
     /// <param name="maxLen">The maximum length of words to include.</param>
-    /// <returns>A new <see cref="DictionaryTrie" /> instance.</returns>
-    /// <exception cref="FileNotFoundException">Thrown if the embedded resource is not found.</exception>
+    /// <returns>A new, populated <see cref="DictionaryTrie" />.</returns>
+    /// <exception cref="FileNotFoundException">Thrown if the embedded resource for the word list cannot be found.</exception>
     public static DictionaryTrie FromEmbedded(WordList list = WordList.Sowpods,
         int maxLen = int.MaxValue)
     {
@@ -75,7 +75,7 @@ public sealed class DictionaryTrie
     }
 
     /// <summary>
-    ///     Loads a collection of words into the trie.
+    ///     Loads an enumeration of words into the trie.
     /// </summary>
     /// <param name="words">The collection of words to add.</param>
     public void LoadWords(IEnumerable<string> words)
@@ -84,18 +84,19 @@ public sealed class DictionaryTrie
     }
 
     /// <summary>
-    ///     Reads words from a TextReader and populates a new trie.
+    ///     Reads words and optional definitions from a TextReader and populates a new trie.
     /// </summary>
     private static DictionaryTrie ReadStream(TextReader streamReader, int maxWordLength)
     {
         var trie = new DictionaryTrie();
+        // Standard Scrabble words are 2-15 letters.
         var regex = new Regex("^[A-Z]{2,15}$", RegexOptions.Compiled);
 
         while (streamReader.ReadLine() is { } line)
         {
             if (string.IsNullOrWhiteSpace(line)) continue;
 
-            var parts = line.Split('\t', 2); // WORD [TAB definition]
+            var parts = line.Split('\t', 2); // Format: WORD [TAB definition]
             var word = parts[0].Trim().ToUpperInvariant();
             if (!regex.IsMatch(word) || word.Length > maxWordLength) continue;
 
@@ -107,10 +108,10 @@ public sealed class DictionaryTrie
     }
 
     /// <summary>
-    ///     Checks if a sequence of characters forms a valid word prefix.
+    ///     Checks if a sequence of characters forms a valid word prefix in the trie.
     /// </summary>
-    /// <param name="word">The word prefix to check.</param>
-    /// <returns>True if the prefix exists in the trie; otherwise, false.</returns>
+    /// <param name="word">The word or prefix to check.</param>
+    /// <returns><c>true</c> if the sequence is a prefix of any word in the dictionary; otherwise, <c>false</c>.</returns>
     public bool Contains(ReadOnlySpan<char> word)
     {
         var currentNode = Root;
@@ -121,10 +122,10 @@ public sealed class DictionaryTrie
     }
 
     /// <summary>
-    ///     Checks if a string is a complete, valid word in the dictionary.
+    ///     Checks if a string is an exact, complete word in the dictionary.
     /// </summary>
     /// <param name="word">The word to check.</param>
-    /// <returns>True if the exact word exists; otherwise, false.</returns>
+    /// <returns><c>true</c> if the exact word exists; otherwise, <c>false</c>.</returns>
     public bool IsWordExact(string word)
     {
         if (string.IsNullOrWhiteSpace(word))
@@ -137,6 +138,8 @@ public sealed class DictionaryTrie
     /// <summary>
     ///     Finds the node corresponding to the end of a given string fragment.
     /// </summary>
+    /// <param name="fragment">The prefix or word to search for.</param>
+    /// <returns>The <see cref="Node" /> at the end of the fragment, or <c>null</c> if not found.</returns>
     private Node? Find(string fragment)
     {
         var currentNode = Root;
@@ -149,6 +152,8 @@ public sealed class DictionaryTrie
     /// <summary>
     ///     Adds a word and its optional definition to the trie.
     /// </summary>
+    /// <param name="word">The word to add.</param>
+    /// <param name="definition">The optional definition of the word.</param>
     private void Add(string word, string? definition)
     {
         var currentNode = Root;
@@ -158,16 +163,16 @@ public sealed class DictionaryTrie
                 : currentNode.Children[character] = new Node();
 
         currentNode.IsWord = true;
-        currentNode.Definition ??= definition; // Keep first definition if duplicates
+        currentNode.Definition ??= definition; // Keep first definition if duplicates are encountered.
     }
 
     /// <summary>
-    ///     Represents a node in the <see cref="DictionaryTrie" />.
+    ///     Represents a node within the <see cref="DictionaryTrie" />.
     /// </summary>
     public sealed class Node
     {
         /// <summary>
-        ///     Child nodes, keyed by character.
+        ///     A dictionary of child nodes, keyed by character.
         /// </summary>
         public readonly Dictionary<char, Node> Children = new();
 
@@ -177,7 +182,7 @@ public sealed class DictionaryTrie
         public string? Definition;
 
         /// <summary>
-        ///     Indicates whether this node represents the end of a valid word.
+        ///     A flag indicating whether this node represents the end of a complete word.
         /// </summary>
         public bool IsWord;
     }

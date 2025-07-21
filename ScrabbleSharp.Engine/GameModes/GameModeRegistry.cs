@@ -6,21 +6,22 @@ using ScrabbleSharp.Engine.GameModes.Enums;
 namespace ScrabbleSharp.Engine.GameModes;
 
 /// <summary>
-///     A registry for all available game modes and a cache for their associated dictionaries.
+///     A registry for accessing game mode configurations and their associated resources, like dictionaries.
 /// </summary>
 public sealed class GameModeRegistry(IEnumerable<IGameMode> providers)
 {
+    // Caches dictionary tries to avoid reloading them from disk/resources for each request.
     private static readonly ConcurrentDictionary<WordList, DictionaryTrie> TrieCache = new();
 
     /// <summary>
-    ///     Gets a read-only dictionary of all registered game modes, keyed by their <see cref="GameMode" /> enum.
+    ///     A read-only dictionary of all registered game modes, keyed by their <see cref="GameMode" /> ID.
     /// </summary>
     public readonly IReadOnlyDictionary<GameMode, IGameMode> Modes = providers.ToDictionary(provider => provider.Id);
 
     /// <summary>
-    ///     Retrieves the game mode provider for the specified game mode.
+    ///     Retrieves the <see cref="IGameMode" /> provider for a specified game mode ID.
     /// </summary>
-    /// <param name="mode">The <see cref="GameMode" /> identifier.</param>
+    /// <param name="mode">The ID of the game mode to retrieve.</param>
     /// <returns>The corresponding <see cref="IGameMode" /> provider.</returns>
     /// <exception cref="ArgumentOutOfRangeException">Thrown if the game mode is not supported.</exception>
     public IGameMode Get(GameMode mode) =>
@@ -29,10 +30,10 @@ public sealed class GameModeRegistry(IEnumerable<IGameMode> providers)
             : throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unsupported game mode.");
 
     /// <summary>
-    ///     Retrieves the dictionary trie for a given word list, using a cache to avoid reloading.
+    ///     Retrieves the <see cref="DictionaryTrie" /> for a specified word list, using a cache to ensure efficiency.
     /// </summary>
-    /// <param name="list">The <see cref="WordList" /> to load.</param>
-    /// <returns>A <see cref="DictionaryTrie" /> for the specified word list.</returns>
+    /// <param name="list">The <see cref="WordList" /> for which to get the trie.</param>
+    /// <returns>A cached or newly created <see cref="DictionaryTrie" /> for the specified list.</returns>
     public DictionaryTrie GetTrie(WordList list) =>
         TrieCache.GetOrAdd(list, wordList => DictionaryTrie.FromEmbedded(wordList));
 }

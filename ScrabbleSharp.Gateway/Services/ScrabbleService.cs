@@ -4,9 +4,19 @@ using ScrabbleSharp.Gateway.Extensions;
 
 namespace ScrabbleSharp.Gateway.Services;
 
+/// <summary>
+/// The gRPC service implementation that exposes Scrabble solver functionality.
+/// </summary>
+/// <remarks>
+/// This class acts as the entry point for API requests, handling gRPC-specific concerns like
+/// context parsing, error handling, and timeouts, before delegating the core logic to <see cref="IGameService"/>.
+/// </remarks>
 public sealed class ScrabbleService(IGameService gameService, ILogger<ScrabbleService> logger)
     : ScrabbleSolver.ScrabbleSolverBase
 {
+    /// <summary>
+    /// Handles the Solve RPC call to find all possible moves.
+    /// </summary>
     public override async Task<SolveResponse> Solve(SolveRequest request, ServerCallContext context)
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -15,6 +25,7 @@ public sealed class ScrabbleService(IGameService gameService, ILogger<ScrabbleSe
             var gameMode = context.ParseGameMode();
             var bands = context.ParseBandHeaders();
 
+            // Enforce a server-side timeout to prevent long-running requests.
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken, timeoutCts.Token);
 
@@ -45,7 +56,7 @@ public sealed class ScrabbleService(IGameService gameService, ILogger<ScrabbleSe
         }
         catch (RpcException)
         {
-            // Re-throw known RpcExceptions from the service layer
+            // Re-throw gRPC exceptions that were already properly constructed.
             throw;
         }
         catch (Exception ex)
@@ -56,6 +67,9 @@ public sealed class ScrabbleService(IGameService gameService, ILogger<ScrabbleSe
         }
     }
 
+    /// <summary>
+    /// Handles the GetLayout RPC call to retrieve the board layout for a game mode.
+    /// </summary>
     public override Task<LayoutResponse> GetLayout(LayoutRequest request, ServerCallContext context)
     {
         var gameMode = context.ParseGameMode();
@@ -63,6 +77,9 @@ public sealed class ScrabbleService(IGameService gameService, ILogger<ScrabbleSe
         return Task.FromResult(response);
     }
 
+    /// <summary>
+    /// Handles the Expand RPC call to expand an expandable board layout.
+    /// </summary>
     public override Task<ExpandDelta> Expand(ExpandRequest request, ServerCallContext context)
     {
         var mode = context.ParseGameMode();

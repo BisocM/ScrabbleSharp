@@ -1,12 +1,12 @@
 ﻿namespace ScrabbleSharp.Engine.Core.Rules.Scoring;
 
 /// <summary>
-///     Provides the tile score table for the Letter League game mode.
+///     Contains the tile score table for the Letter League game mode.
 /// </summary>
 public static class LetterLeagueTileScores
 {
     /// <summary>
-    ///     A mapping of characters to their point values in Letter League.
+    ///     A read-only dictionary mapping each character to its point value in Letter League.
     /// </summary>
     public static readonly IReadOnlyDictionary<char, int> Table =
         new Dictionary<char, int>

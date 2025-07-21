@@ -9,7 +9,7 @@ using ScrabbleSharp.Engine.GameModes.Enums;
 namespace ScrabbleSharp.Engine.GameModes.Types;
 
 /// <summary>
-///     Defines the Scrabble Duel game mode.
+///     Defines the configuration for the Scrabble Duel game mode.
 /// </summary>
 public class ScrabbleDuelMode : IGameMode
 {

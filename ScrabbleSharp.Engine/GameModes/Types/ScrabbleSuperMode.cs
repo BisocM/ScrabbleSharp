@@ -9,7 +9,7 @@ using ScrabbleSharp.Engine.GameModes.Enums;
 namespace ScrabbleSharp.Engine.GameModes.Types;
 
 /// <summary>
-///     Defines the Super Scrabble game mode.
+///     Defines the configuration for the Super Scrabble game mode.
 /// </summary>
 public class ScrabbleSuperMode : IGameMode
 {

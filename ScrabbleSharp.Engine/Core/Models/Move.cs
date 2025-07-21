@@ -3,43 +3,43 @@
 namespace ScrabbleSharp.Engine.Core.Models;
 
 /// <summary>
-///     Represents a player's move, including the word, position, tiles used, and score.
+///     Represents a single move in the game, including the word played, its position, score, and the tiles used.
 /// </summary>
 public sealed record Move
 {
     /// <summary>
-    ///     Gets the full word formed by the move.
+    ///     The primary word formed by the move.
     /// </summary>
     public string Word { get; init; } = string.Empty;
 
     /// <summary>
-    ///     Gets the starting row of the word.
+    ///     The starting row index of the word.
     /// </summary>
     public int StartRow { get; init; }
 
     /// <summary>
-    ///     Gets the starting column of the word.
+    ///     The starting column index of the word.
     /// </summary>
     public int StartCol { get; init; }
 
     /// <summary>
-    ///     Gets a value indicating whether the word is placed horizontally.
+    ///     Indicates if the word is played horizontally (<c>true</c>) or vertically (<c>false</c>).
     /// </summary>
     public bool IsHorizontal { get; init; }
 
     /// <summary>
-    ///     Gets the list of new tiles placed on the board for this move.
+    ///     The list of new tiles placed on the board for this move.
     /// </summary>
     public ImmutableList<TilePlacement> Tiles { get; init; }
         = ImmutableList<TilePlacement>.Empty;
 
     /// <summary>
-    ///     Gets the total score of the move.
+    ///     The total score awarded for this move.
     /// </summary>
     public int Score { get; init; }
-    
+
     /// <summary>
-    ///     Gets the definition of the word.
+    ///     The dictionary definition of the word.
     /// </summary>
     public string Defintion { get; set; } = string.Empty;
 }

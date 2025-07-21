@@ -4,7 +4,7 @@ using ScrabbleSharp.Engine.Core.Rules.Scoring;
 namespace ScrabbleSharp.Engine.Services.MoveGeneration;
 
 /// <summary>
-///     A helper class to efficiently track the count of each letter tile on a player's rack.
+///     A helper class to efficiently track the counts of available tiles on a player's rack.
 /// </summary>
 public sealed class RackCounts
 {
@@ -14,8 +14,8 @@ public sealed class RackCounts
     private readonly int[] _counts = new int[AlphabetSize + 1]; // +1 for the blank tile '*'
 
     /// <summary>
-    ///     Initializes static members of the <see cref="RackCounts" /> class.
-    ///     Creates a sorted list of letters by their Scrabble score to optimize move generation.
+    ///     Initializes the static list of letters sorted by descending point value.
+    ///     This is used to prioritize trying higher-scoring letters first during move generation.
     /// </summary>
     static RackCounts()
     {
@@ -28,9 +28,9 @@ public sealed class RackCounts
     }
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="RackCounts" /> class from a string of rack letters.
+    ///     Initializes a new instance of the <see cref="RackCounts" /> class from a string representation of a rack.
     /// </summary>
-    /// <param name="rack">The string of letters on the rack (e.g., "AEIOU**"). Blanks can be represented by '*' or '_'.</param>
+    /// <param name="rack">The string of rack letters (e.g., "AEIOU*_"). Blanks can be represented by '*' or '_'.</param>
     public RackCounts(string rack)
     {
         foreach (var rawChar in rack.ToUpperInvariant())
@@ -42,24 +42,25 @@ public sealed class RackCounts
     }
 
     /// <summary>
-    ///     Gets the number of tiles remaining on the rack.
+    ///     Gets the total number of tiles currently remaining on the rack.
     /// </summary>
     public int TilesRemaining { get; private set; }
 
     /// <summary>
-    ///     Gets the array index for a given character ('*' is at the end).
+    ///     Gets the array index for a given tile character.
     /// </summary>
     private static int GetIndex(char character) => character == '*' ? AlphabetSize : character - 'A';
 
     /// <summary>
-    ///     Checks if the rack contains a specific tile.
+    ///     Checks if the rack contains at least one of the specified tile.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Has(char character) => _counts[GetIndex(character)] > 0;
 
     /// <summary>
-    ///     Removes one instance of a tile from the rack counts.
+    ///     Decrements the count of a specified tile, effectively "taking" it from the rack.
     /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown if the tile is not on the rack.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Take(char character)
     {
@@ -70,7 +71,7 @@ public sealed class RackCounts
     }
 
     /// <summary>
-    ///     Adds one instance of a tile back to the rack counts.
+    ///     Increments the count of a specified tile, effectively "putting" it back on the rack.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Put(char character)
@@ -80,15 +81,18 @@ public sealed class RackCounts
     }
 
     /// <summary>
-    ///     Returns an enumerable of the distinct tiles on the rack, ordered for move generation efficiency.
-    ///     Higher-value tiles are returned first, and blanks are returned last.
+    ///     Returns an enumerable of the distinct tiles on the rack, ordered for optimal move generation.
     /// </summary>
+    /// <remarks>
+    ///     High-value letters are returned first, and the blank tile ('*') is returned last
+    ///     because it creates the most branching in the search algorithm.
+    /// </remarks>
     public IEnumerable<char> DistinctTiles()
     {
         foreach (var character in LettersByValueDesc)
             if (Has(character))
                 yield return character;
 
-        if (Has('*')) yield return '*'; // Blank is tried last as it involves the most branching.
+        if (Has('*')) yield return '*';
     }
 }

@@ -6,7 +6,7 @@ using ScrabbleSharp.Engine.Core.Tiles;
 namespace ScrabbleSharp.Engine.Core.Rules.Types;
 
 /// <summary>
-///     Provides a base implementation for game rules, handling common scoring logic.
+///     An abstract base class providing common implementations for game rule logic.
 /// </summary>
 public abstract class GameRulesBase : IGameRules
 {
@@ -14,6 +14,11 @@ public abstract class GameRulesBase : IGameRules
     public abstract int GetBaseLetterScore(char letter);
 
     /// <inheritdoc />
+    /// <remarks>
+    ///     By default, blank tiles score 0, otherwise the base letter score is returned.
+    ///     This method does not account for letter multipliers on the board, as those are handled
+    ///     during the main move calculation.
+    /// </remarks>
     public virtual int GetLetterScore(
         Board board,
         int row,
@@ -24,13 +29,15 @@ public abstract class GameRulesBase : IGameRules
     {
         return blank
             ? 0
-            :
-            // Always return the base score for any non-blank letter.
-            // The multipliers for the current move's new tiles are handled elsewhere.
-            GetBaseLetterScore(letter);
+            : GetBaseLetterScore(letter);
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    ///     This implementation "consumes" a square's multiplier once a tile is placed on it.
+    ///     The score contribution of the letter (with its multiplier) is cached in <see cref="Square.PermanentLetterScore" />,
+    ///     though this property is not currently used in move calculation. The multiplier is then set to None.
+    /// </remarks>
     public virtual void OnTilePlaced(
         Board board,
         int row,
@@ -42,15 +49,18 @@ public abstract class GameRulesBase : IGameRules
 
         var effectiveScore = blank ? 0 : GetBaseLetterScore(letter);
 
-        // Apply the letter multiplier from the square and store it permanently.
         effectiveScore *= square.LetterMultiplier;
         square.PermanentLetterScore = effectiveScore;
 
-        // Consume the multiplier so it cannot be used again.
+        // Once a tile is placed, the multiplier is used up.
         square.SetMultiplier(MultiplierType.None);
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    ///     This method calculates the score by summing the main word's score and all cross-word scores,
+    ///     then applying any final bonuses (like a bingo).
+    /// </remarks>
     public virtual int CalculateMoveScore(Board board, Move move)
     {
         var newTiles = move.Tiles.ToDictionary(tile => (tile.Row, tile.Col));
@@ -59,7 +69,7 @@ public abstract class GameRulesBase : IGameRules
 
         var (deltaRow, deltaCol) = move.IsHorizontal ? (0, 1) : (1, 0);
 
-        // Calculate the score for the main word.
+        // Calculate score for the main word
         for (var i = 0; i < move.Word.Length; i++)
         {
             var row = move.StartRow + i * deltaRow;
@@ -73,6 +83,7 @@ public abstract class GameRulesBase : IGameRules
 
             if (isNew)
             {
+                // Apply letter and word multipliers only for newly placed tiles
                 letterScore *= board.GetLetterMultiplier(row, column);
                 wordMultiplier *= board.GetWordMultiplier(row, column);
             }
@@ -82,7 +93,7 @@ public abstract class GameRulesBase : IGameRules
 
         mainWordScore *= wordMultiplier;
 
-        // Calculate the score for all cross-words (words formed perpendicularly).
+        // Calculate scores for any cross-words formed
         var crossScore = 0;
         foreach (var tile in move.Tiles)
             crossScore += CalculateCrossWordScore(board, tile, move.IsHorizontal);
@@ -93,28 +104,31 @@ public abstract class GameRulesBase : IGameRules
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    ///     This default implementation awards a 50-point bonus if 7 tiles are placed (a "bingo").
+    /// </remarks>
     public virtual int ApplyFinalBonuses(int preBonusScore, int tilesPlacedCount)
     {
-        // Standard Scrabble "bingo" bonus for using all 7 tiles.
         if (tilesPlacedCount == 7) return preBonusScore + 50;
         return preBonusScore;
     }
 
     /// <summary>
-    ///     Calculates the score of a single cross-word created by a new tile placement.
+    ///     Calculates the score of a single cross-word formed by a newly placed tile.
     /// </summary>
     /// <param name="board">The game board.</param>
     /// <param name="placedTile">The newly placed tile that forms the cross-word.</param>
-    /// <param name="mainIsHorizontal">Whether the main move was horizontal.</param>
+    /// <param name="mainIsHorizontal">Whether the main move is horizontal.</param>
     /// <returns>The score of the cross-word, or 0 if no cross-word was formed.</returns>
     protected virtual int CalculateCrossWordScore(Board board,
         TilePlacement placedTile,
         bool mainIsHorizontal)
     {
-        var (deltaRow, deltaCol) = mainIsHorizontal ? (1, 0) : (0, 1); // Perpendicular direction
+        // Perpendicular direction to the main move
+        var (deltaRow, deltaCol) = mainIsHorizontal ? (1, 0) : (0, 1);
         int currentRow = placedTile.Row, currentCol = placedTile.Col;
 
-        // Find the start of the cross-word.
+        // Find the start of the cross-word
         while (currentRow - deltaRow >= 0 && currentCol - deltaCol >= 0 &&
                !board.IsEmpty(currentRow - deltaRow, currentCol - deltaCol))
         {
@@ -122,15 +136,15 @@ public abstract class GameRulesBase : IGameRules
             currentCol -= deltaCol;
         }
 
-        // If the tile has no perpendicular neighbors, it didn't form a cross-word.
+        // Check if a valid cross-word exists (must be more than one letter long).
         if (currentRow == placedTile.Row && currentCol == placedTile.Col &&
             (currentRow + deltaRow >= board.Rows || currentCol + deltaCol >= board.Cols ||
              board.IsEmpty(currentRow + deltaRow, currentCol + deltaCol)))
-            return 0;
+            return 0; // No adjacent tiles in the cross direction, so no cross-word.
 
         int wordScore = 0, wordMultiplier = 1;
 
-        // Iterate through the letters of the cross-word to calculate its score.
+        // Iterate through the letters of the cross-word to calculate its score
         for (int iteratingRow = currentRow, iteratingCol = currentCol;
              iteratingRow < board.Rows && iteratingCol < board.Cols;
              iteratingRow += deltaRow, iteratingCol += deltaCol)
@@ -156,6 +170,7 @@ public abstract class GameRulesBase : IGameRules
 
             if (isNew)
             {
+                // Multipliers on the square of the newly placed tile apply to the cross-word as well.
                 letterScore *= board.GetLetterMultiplier(iteratingRow, iteratingCol);
                 wordMultiplier *= board.GetWordMultiplier(iteratingRow, iteratingCol);
             }

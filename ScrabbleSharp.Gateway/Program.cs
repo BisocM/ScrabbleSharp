@@ -13,24 +13,24 @@ using ScrabbleSharp.Gateway.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-
-// ========== gRPC (HTTP/2 + gRPC=Web) ==========
+// Configure gRPC services
 builder.Services.AddGrpc(opts =>
 {
     opts.EnableDetailedErrors = builder.Environment.IsDevelopment();
-    opts.MaxReceiveMessageSize = 10_240;
-    opts.MaxSendMessageSize = 10_240;
+    opts.MaxReceiveMessageSize = 10_240; // 10 KB
+    opts.MaxSendMessageSize = 10_240; // 10 KB
     opts.ResponseCompressionAlgorithm = "gzip";
     opts.ResponseCompressionLevel = CompressionLevel.SmallestSize;
     opts.CompressionProviders = [new GzipCompressionProvider(CompressionLevel.SmallestSize)];
 
+    // Add custom interceptor for request validation.
     opts.Interceptors.Add<ValidationInterceptor>();
 });
 
-// ========== Kestrel ==========
+// Remove server header for security.
 builder.WebHost.ConfigureKestrel(k => k.AddServerHeader = false);
 
-// ========== HSTS / HTTPS ==========
+// Configure security headers (HSTS)
 builder.Services.AddHsts(h =>
 {
     h.Preload = true;
@@ -43,14 +43,14 @@ builder.Services.AddHttpsRedirection(r =>
     r.HttpsPort = 443;
 });
 
-// ========== CORS (needed for gRPC=Web from the browser) ==========
+// Configure CORS policies
 builder.Services.AddCors(c =>
 {
-#if RELEASE
     var corsSettings = builder.Configuration
         .GetSection("Cors")
-        .Get<Configuration.CorsSettings>();
+        .Get<Configuration.CorsSettings>() ?? new Configuration.CorsSettings();
 
+    // Strict policy for production environments
     c.AddPolicy("StrictCors", policyBulder =>
     {
         policyBulder
@@ -58,61 +58,34 @@ builder.Services.AddCors(c =>
             .WithMethods("POST", "OPTIONS")
             .WithHeaders(
                 HeaderNames.ContentType,
-                "x-grpc-web",
-                "x-user-agent",
-                "grpc-timeout",
-                "grpc-encoding",
-                "grpc-accept-encoding",
-                "connect-protocol-version",
-                "connect-timeout-ms",
-                // === Application-specific ===
-                "x-mode", 
-                "x-up", 
-                "x-down", 
-                "x-right", 
-                "x-left",
-                "x-expandable")
+                "x-grpc-web", "x-user-agent", "grpc-timeout", "grpc-encoding",
+                "grpc-accept-encoding", "connect-protocol-version", "connect-timeout-ms",
+                // Custom headers for game state
+                "x-mode", "x-up", "x-down", "x-right", "x-left", "x-expandable")
             .WithExposedHeaders(
-                "grpc-status",
-                "grpc-message",
-                "grpc-encoding",
-                "grpc-accept-encoding");
+                "grpc-status", "grpc-message", "grpc-encoding", "grpc-accept-encoding");
     });
-#endif
 
-#if DEBUG
+    // Lenient policy for local development
     c.AddPolicy("DevCors", p => p
         .AllowAnyOrigin()
         .WithMethods("POST", "OPTIONS")
         .WithHeaders(
             HeaderNames.ContentType,
-            "x-grpc-web",
-            "x-user-agent",
-            "grpc-timeout",
-            "grpc-encoding",
-            "grpc-accept-encoding",
-            "connect-protocol-version",
-            "connect-timeout-ms",
-            // === Application-specific ===
-            "x-mode",
-            "x-up",
-            "x-down",
-            "x-right",
-            "x-left",
-            "x-expandable")
+            "x-grpc-web", "x-user-agent", "grpc-timeout", "grpc-encoding",
+            "grpc-accept-encoding", "connect-protocol-version", "connect-timeout-ms",
+            // Custom headers for game state
+            "x-mode", "x-up", "x-down", "x-right", "x-left", "x-expandable")
         .WithExposedHeaders(
-            "grpc-status",
-            "grpc-message",
-            "grpc-encoding",
-            "grpc-accept-encoding"));
-#endif
+            "grpc-status", "grpc-message", "grpc-encoding", "grpc-accept-encoding"));
 });
 
-// ========== Rate limiting ==========
+// Configure rate limiting policy
 builder.Services.AddRateLimiter(o =>
 {
     o.AddPolicy("PerClient", ctx =>
     {
+        // Identify client by IP, preferring proxy headers if available.
         var ip =
             ctx.Request.Headers["CF-Connecting-IP"].FirstOrDefault()
             ?? ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault()
@@ -126,59 +99,50 @@ builder.Services.AddRateLimiter(o =>
                 PermitLimit = 30,
                 Window = TimeSpan.FromMinutes(1),
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                QueueLimit = 0
+                QueueLimit = 0 // Reject requests immediately when limit is reached
             });
     });
 });
 
-// ========== Start Engine Registration ==========
-
-//Game-mode providers
+// Register engine services for dependency injection
 builder.Services.AddSingleton<IGameMode, LetterLeagueClassicMode>();
 builder.Services.AddSingleton<IGameMode, ScrabbleClassicMode>();
 builder.Services.AddSingleton<IGameMode, ScrabbleSuperMode>();
 builder.Services.AddSingleton<IGameMode, ScrabbleDuelMode>();
 
-// Engine Services
 builder.Services.AddSingleton<GameModeRegistry>();
 builder.Services.AddTransient<MoveGenerator>();
 
-// Gateway Services
+// Register gateway services
 builder.Services.AddTransient<IGameService, GameService>();
 
-// Register all the possible layouts
+// Register board layouts
 builder.Services.AddTransient<LetterLeagueLayout>();
 builder.Services.AddTransient<ScrabbleSuperLayout>();
 builder.Services.AddTransient<ScrabbleDuelLayout>();
 builder.Services.AddTransient<ScrabbleLayout>();
 
-// ========== End Engine Registration ==========
-
 var app = builder.Build();
 
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/error"); // TODO add ErrorController
-    app.UseHsts();
-    // app.UseHttpsRedirection(); Kestrel doesn't need to terminate TLS, depending on setup. Ensure that if you are hosting this, you have an adequate environment.
-}
+// Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment()) app.UseHsts();
 
 app.UseRouting();
 app.UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true });
 app.UseCors(app.Environment.IsDevelopment() ? "DevCors" : "StrictCors");
 app.UseRateLimiter();
 
-// Security headers
+// Add additional security headers middleware
 app.Use(async (ctx, next) =>
 {
     ctx.Response.Headers["X-Content-Type-Options"] = "nosniff";
     ctx.Response.Headers["X-Frame-Options"] = "DENY";
     ctx.Response.Headers["Referrer-Policy"] = "no-referrer";
-    ctx.Response.Headers["Permissions-Policy"] = "interest-cohort-()";
+    ctx.Response.Headers["Permissions-Policy"] = "interest-cohort=()";
     await next();
 });
 
-// ========== gRPC endpoint ==========
+// Map gRPC service endpoints
 app.MapGrpcService<ScrabbleService>()
     .RequireCors(app.Environment.IsDevelopment() ? "DevCors" : "StrictCors")
     .RequireRateLimiting("PerClient");

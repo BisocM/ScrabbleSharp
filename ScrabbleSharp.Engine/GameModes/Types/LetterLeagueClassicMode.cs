@@ -9,7 +9,7 @@ using ScrabbleSharp.Engine.GameModes.Enums;
 namespace ScrabbleSharp.Engine.GameModes.Types;
 
 /// <summary>
-///     Defines the Letter League Classic game mode.
+///     Defines the configuration for the Letter League Classic game mode.
 /// </summary>
 public sealed class LetterLeagueClassicMode : IGameMode
 {

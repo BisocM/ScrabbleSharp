@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrabbleSharp.Gateway", "Sc
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrabbleSharp.Contracts", "ScrabbleSharp.Contracts\ScrabbleSharp.Contracts.csproj", "{9B9CE776-959E-4F91-82B3-BF45CE0DE9E0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScrabbleSharp.Tests", "ScrabbleSharp.Tests\ScrabbleSharp.Tests.csproj", "{B46F7E31-95B0-4FEC-B6E2-15B9A5D0FFEC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{9B9CE776-959E-4F91-82B3-BF45CE0DE9E0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9B9CE776-959E-4F91-82B3-BF45CE0DE9E0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9B9CE776-959E-4F91-82B3-BF45CE0DE9E0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B46F7E31-95B0-4FEC-B6E2-15B9A5D0FFEC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B46F7E31-95B0-4FEC-B6E2-15B9A5D0FFEC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B46F7E31-95B0-4FEC-B6E2-15B9A5D0FFEC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B46F7E31-95B0-4FEC-B6E2-15B9A5D0FFEC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

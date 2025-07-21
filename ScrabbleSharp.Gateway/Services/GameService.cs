@@ -13,6 +13,9 @@ using EngineMove = ScrabbleSharp.Engine.Core.Models.Move;
 
 namespace ScrabbleSharp.Gateway.Services;
 
+/// <summary>
+/// Implements the core game logic service, orchestrating the engine components to handle requests.
+/// </summary>
 public sealed class GameService(
     GameModeRegistry gameModeRegistry,
     IServiceProvider serviceProvider,
@@ -23,6 +26,7 @@ public sealed class GameService(
 {
     private readonly ValidationSettings _validationSettings = validationSettings.Value;
 
+    /// <inheritdoc />
     public async Task<IEnumerable<EngineMove>> SolveAsync(
         string rack,
         string boardString,
@@ -35,7 +39,6 @@ public sealed class GameService(
         var layout = BuildLayout(mode, bands);
         var trie = gameModeRegistry.GetTrie(gameModeProvider.Dictionary);
 
-        // Semantic validation: ensure the provided board fits the generated layout.
         var lines = boardString.Split('\n');
         if (lines.Length > layout.Rows)
             throw new ArgumentException($"Submitted board has {lines.Length} rows but the selected layout supports only {layout.Rows}.");
@@ -44,6 +47,7 @@ public sealed class GameService(
 
         var board = BoardSnapshot.FromString(boardString, layout, gameModeProvider.Rules);
 
+        // Run the potentially long-running move generation on a background thread.
         var allMoves = await Task.Run(
             () => moveGenerator.GenerateAllMoves(rack, board, trie, gameModeProvider.Rules),
             cancellationToken);
@@ -55,19 +59,21 @@ public sealed class GameService(
             "Solved rack {Rack} (mode={Mode}, bands={@Bands}): found {Count} moves in {Duration}ms",
             rack, mode, bands, balancedMoves.Count, stopwatch.ElapsedMilliseconds);
 
-        // Attach definitions to moves
+        // Augment moves with definitions after generation.
         foreach (var move in balancedMoves)
             move.Defintion = trie.GetDefinition(move.Word) ?? string.Empty;
 
         return balancedMoves.OrderByDescending(m => m.Score);
     }
 
+    /// <inheritdoc />
     public LayoutResponse GetLayout(GameMode mode)
     {
         var layout = gameModeRegistry.Get(mode).CreateLayout(serviceProvider);
         return layout.ToLayoutResponse();
     }
 
+    /// <inheritdoc />
     public ExpandDelta ExpandLayout(
         GameMode mode,
         (int Up, int Down, int Left, int Right) bands,
@@ -79,6 +85,7 @@ public sealed class GameService(
         if (layout is not IExpandableBoardLayout expandable)
             throw new RpcException(new Status(StatusCode.Unimplemented, "This game mode's layout cannot be expanded."));
 
+        // Check against configured limits before attempting expansion.
         if (direction switch
             {
                 Direction.Up => bands.Up >= _validationSettings.MaxBandsPerDirection,
@@ -90,7 +97,7 @@ public sealed class GameService(
         {
             throw new RpcException(new Status(StatusCode.FailedPrecondition, "Expansion limit has been reached for this direction."));
         }
-        
+
         expandable.ApplyBands(bands);
 
         var (triggerRow, triggerCol) = expandable.GetTriggerCoordinates(direction);
@@ -107,10 +114,13 @@ public sealed class GameService(
 
         logger.LogInformation("Expanded {Dir} (mode={Mode}, prevBands={@Prev}, newSize={{R:{Rows},C:{Cols}}})",
             direction, mode, bands, delta.TotalRows, delta.TotalCols);
-            
+
         return delta;
     }
 
+    /// <summary>
+    /// Builds a board layout for a given mode and applies any specified expansions.
+    /// </summary>
     private IBoardLayout BuildLayout(GameMode mode, (int Up, int Down, int Left, int Right) bands)
     {
         var provider = gameModeRegistry.Get(mode);
@@ -120,9 +130,16 @@ public sealed class GameService(
         return layout;
     }
 
+    /// <summary>
+    /// Balances the list of generated moves to return a manageable and diverse set of results.
+    /// It prioritizes higher-scoring moves but ensures a mix of different word lengths.
+    /// </summary>
+    /// <param name="moves">The complete list of generated moves.</param>
+    /// <returns>A balanced and trimmed list of moves.</returns>
     private List<EngineMove> BalanceMoveResults(IReadOnlyList<EngineMove> moves)
     {
         const int maxMovesToReturn = 128;
+        // Quotas to ensure a mix of word lengths in the final result.
         var quotas = new Dictionary<int, int>
         {
             [7] = 40, [6] = 30, [5] = 20,
@@ -136,7 +153,7 @@ public sealed class GameService(
         {
             if (balancedMoves.Count >= maxMovesToReturn) break;
             if (!quotas.TryGetValue(group.Key, out var quota)) continue;
-            
+
             var remainingSlots = maxMovesToReturn - balancedMoves.Count;
             var takeCount = Math.Min(quota, remainingSlots);
             balancedMoves.AddRange(group.OrderByDescending(m => m.Score).Take(takeCount));

@@ -1,27 +1,27 @@
 ﻿namespace ScrabbleSharp.Engine.Core.Dictionary;
 
 /// <summary>
-///     Enumerates the available word lists for different Scrabble standards.
+///     Enumerates the available word lists for different Scrabble lexicons.
 /// </summary>
 public enum WordList
 {
     /// <summary>
-    ///     International word list (SOWPODS/CSW), words only.
+    ///     SOWPODS/Collins Scrabble Words (CSW), used in most English-speaking countries except the US, Canada, and Thailand.
     /// </summary>
     Sowpods,
 
     /// <summary>
-    ///     North American list (NASPA/NWL), words only.
+    ///     Tournament Word List (TWL), used in the US, Canada, and Thailand.
     /// </summary>
     Twl,
 
     /// <summary>
-    ///     Collins 2019 dictionary, with definitions.
+    ///     Collins Official Scrabble Words 2019 edition.
     /// </summary>
     Collins19,
 
     /// <summary>
-    ///     Wordnik public word list, with definitions.
+    ///     A large, comprehensive word list derived from Wordnik, used for Letter League.
     /// </summary>
     Wordnik
 }

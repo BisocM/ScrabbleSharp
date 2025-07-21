@@ -3,7 +3,7 @@
 namespace ScrabbleSharp.Engine.Core.Rules.Types;
 
 /// <summary>
-///     Implements game rules for Letter League, using its specific tile scores.
+///     Implements the classic game rules for Letter League, using its specific tile scores.
 /// </summary>
 public class LetterLeagueClassicRules : GameRulesBase
 {

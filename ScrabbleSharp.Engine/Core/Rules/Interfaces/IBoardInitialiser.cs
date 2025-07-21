@@ -3,13 +3,13 @@
 namespace ScrabbleSharp.Engine.Core.Rules.Interfaces;
 
 /// <summary>
-///     Defines a contract for logic that initializes a board after it has been constructed,
-///     for example, by applying a snapshot of a game in progress.
+///     Defines a contract for components that perform additional initialization on a board
+///     after it has been constructed, typically after loading from a snapshot.
 /// </summary>
 public interface IBoardInitialiser
 {
     /// <summary>
-    ///     Initializes the specified board.
+    ///     Performs initialization logic on the provided board.
     /// </summary>
     /// <param name="board">The board to initialize.</param>
     void Initialise(Board board);

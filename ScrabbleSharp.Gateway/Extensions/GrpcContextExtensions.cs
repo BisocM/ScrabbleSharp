@@ -4,16 +4,15 @@ using ScrabbleSharp.Engine.GameModes.Enums;
 namespace ScrabbleSharp.Gateway.Extensions;
 
 /// <summary>
-///     Provides extension methods for <see cref="ServerCallContext" /> to parse custom request headers.
+///     Provides extension methods for <see cref="ServerCallContext" /> to simplify request metadata parsing.
 /// </summary>
 public static class GrpcContextExtensions
 {
     /// <summary>
-    ///     Parses the custom 'x-up', 'x-down', 'x-left', and 'x-right' headers
-    ///     to determine the current expansion state of the board.
+    ///     Parses custom headers for board expansion bands.
     /// </summary>
     /// <param name="context">The gRPC server call context.</param>
-    /// <returns>A tuple containing the number of bands expanded in each direction.</returns>
+    /// <returns>A tuple (Up, Down, Left, Right) with the number of bands for each direction.</returns>
     public static (int Up, int Down, int Left, int Right) ParseBandHeaders(this ServerCallContext context)
     {
         return (ParseHeader("x-up"), ParseHeader("x-down"), ParseHeader("x-left"), ParseHeader("x-right"));
@@ -24,7 +23,7 @@ public static class GrpcContextExtensions
     ///     Parses the custom 'x-mode' header to determine the requested game mode.
     /// </summary>
     /// <param name="context">The gRPC server call context.</param>
-    /// <returns>The parsed <see cref="GameMode" />, defaulting to LetterLeagueClassic.</returns>
+    /// <returns>The parsed <see cref="GameMode" />, defaulting to <see cref="GameMode.LetterLeagueClassic" /> if not specified or invalid.</returns>
     public static GameMode ParseGameMode(this ServerCallContext context)
     {
         var rawMode = context.RequestHeaders.GetValue("x-mode") ?? "letterleague_classic";

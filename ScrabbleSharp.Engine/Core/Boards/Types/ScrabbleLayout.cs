@@ -5,7 +5,7 @@ using static ScrabbleSharp.Engine.Core.Tiles.MultiplierType;
 namespace ScrabbleSharp.Engine.Core.Boards.Types;
 
 /// <summary>
-///     Represents the classic 15x15 Scrabble board layout.
+///     Represents the standard 15x15 Scrabble board layout.
 /// </summary>
 public sealed class ScrabbleLayout : IBoardLayout
 {

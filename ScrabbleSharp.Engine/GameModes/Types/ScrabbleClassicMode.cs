@@ -9,7 +9,7 @@ using ScrabbleSharp.Engine.GameModes.Enums;
 namespace ScrabbleSharp.Engine.GameModes.Types;
 
 /// <summary>
-///     Defines the Scrabble Classic game mode.
+///     Defines the configuration for the standard Scrabble Classic game mode.
 /// </summary>
 public sealed class ScrabbleClassicMode : IGameMode
 {

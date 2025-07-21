@@ -5,17 +5,23 @@ using ScrabbleSharp.Engine.Core.Rules.Interfaces;
 namespace ScrabbleSharp.Engine.Serialization;
 
 /// <summary>
-///     Provides static methods for creating and applying board state from a string representation.
+///     Provides static methods for creating and applying board states from a string representation.
 /// </summary>
 public static class BoardSnapshot
 {
     /// <summary>
-    ///     Creates a new board from a string snapshot.
+    ///     Creates a new <see cref="Board" /> instance from a string snapshot.
     /// </summary>
-    /// <param name="snapshot">The string representing the board state. Lowercase letters indicate blanks.</param>
+    /// <param name="snapshot">
+    ///     The string representation of the board state.
+    ///     - Newlines separate rows.
+    ///     - Uppercase letters represent standard tiles.
+    ///     - Lowercase letters represent blank tiles played as that letter.
+    ///     - '.', ' ', or '0' represent empty squares.
+    /// </param>
     /// <param name="layout">The board layout to use.</param>
-    /// <param name="rules">The game rules to apply.</param>
-    /// <returns>A new <see cref="Board" /> instance with the state applied.</returns>
+    /// <param name="rules">The game rules to associate with the board.</param>
+    /// <returns>A new <see cref="Board" /> instance initialized with the snapshot state.</returns>
     public static Board FromString(string snapshot,
         IBoardLayout layout,
         IGameRules rules)
@@ -26,10 +32,16 @@ public static class BoardSnapshot
     }
 
     /// <summary>
-    ///     Applies a string snapshot to an existing board.
+    ///     Applies a string snapshot to an existing <see cref="Board" /> instance.
     /// </summary>
     /// <param name="board">The board to modify.</param>
-    /// <param name="snapshot">The string representing the board state.</param>
+    /// <param name="snapshot">
+    ///     The string representation of the board state to apply.
+    ///     - Newlines separate rows.
+    ///     - Uppercase letters represent standard tiles.
+    ///     - Lowercase letters represent blank tiles played as that letter.
+    ///     - '.', ' ', or '0' represent empty squares.
+    /// </param>
     public static void Apply(Board board, string snapshot)
     {
         if (string.IsNullOrWhiteSpace(snapshot))
@@ -54,9 +66,6 @@ public static class BoardSnapshot
                     ? char.ToUpperInvariant(character)
                     : character;
 
-                // This is the fix. Instead of manually setting properties,
-                // we call the board's SetLetter method. This ensures that
-                // game rules, like consuming the multiplier, are correctly triggered.
                 board.SetLetter(row, column, letter, isBlank);
             }
         }

@@ -1,12 +1,12 @@
 ﻿namespace ScrabbleSharp.Engine.Core.Rules.Scoring;
 
 /// <summary>
-///     Provides the standard tile score table for classic Scrabble.
+///     Contains the standard tile score table for classic Scrabble.
 /// </summary>
 public static class ScrabbleTileScores
 {
     /// <summary>
-    ///     A mapping of characters to their standard point values.
+    ///     A read-only dictionary mapping each character to its standard point value.
     /// </summary>
     public static readonly IReadOnlyDictionary<char, int> Table =
         new Dictionary<char, int>

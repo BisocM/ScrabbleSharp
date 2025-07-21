@@ -10,7 +10,7 @@ using ScrabbleSharp.Engine.Core.Rules.Interfaces;
 namespace ScrabbleSharp.Engine.Services.MoveGeneration;
 
 /// <summary>
-///     Immutable per-solve data (pure value object).  Everything is thread-safe.
+///     Encapsulates the context for a single move generation process.
 /// </summary>
 public sealed record MoveGenerationContext(
     Board Board,
@@ -20,11 +20,21 @@ public sealed record MoveGenerationContext(
     bool IsFirstMove,
     int OpeningMinimumLength = 0)
 {
-    // Memoises cross-word legality for identical square/letter/orientation checks.
+    /// <summary>
+    ///     Caches the results of cross-check lookups to avoid redundant computations within a single generation pass.
+    /// </summary>
     public ConcurrentDictionary<(int Row, int Col, char Letter, bool MainIsHoriz), bool> CrossCache { get; }
         = new();
 }
 
+/// <summary>
+///     The primary engine for generating all possible legal moves from a given board state and rack.
+/// </summary>
+/// <remarks>
+///     This implementation uses a classic algorithm based on "anchors". An anchor is an empty square
+///     adjacent to an existing tile. The generator iterates through all anchors and, for each,
+///     generates all possible words that can be played through that anchor.
+/// </remarks>
 public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
 {
     private const uint AllMask = (1u << 26) - 1;
@@ -32,9 +42,14 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
     private const int InitialResultCapacity = 16_384;
 
     /// <summary>
-    ///     Generate every legal move for <paramref name="rackLetters" /> on <paramref name="board" />.
-    ///     Thread-safe, stateless, returns **unsorted** list (caller may sort).
+    ///     Generates all possible legal moves for a given rack and board state.
     /// </summary>
+    /// <param name="rackLetters">A string representing the letters on the player's rack (e.g., "HELLO**").</param>
+    /// <param name="board">The current board state.</param>
+    /// <param name="dictionary">The dictionary trie to validate words against.</param>
+    /// <param name="rules">The game rules for scoring.</param>
+    /// <param name="openingMinimumLength">The minimum length for the first move of the game.</param>
+    /// <returns>A list of all valid <see cref="Move" /> objects.</returns>
     public List<Move> GenerateAllMoves(
         string rackLetters,
         Board board,
@@ -54,6 +69,8 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
 
         var anchors = FindAnchors(ctx);
 
+        // To prevent performance issues on very open boards, limit the number of anchors processed.
+        // A center-bias sort helps prioritize more promising anchors.
         if (anchors.Count > MaxAnchorsToProcess)
             anchors = anchors
                 .OrderBy(a => Math.Abs(a.Item1 - board.OriginRow) +
@@ -61,7 +78,6 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
                 .Take(MaxAnchorsToProcess)
                 .ToList();
 
-        // Concurrent result store with atomic de-duplication.
         var concurrencyLevel = Environment.ProcessorCount;
         var results = new ConcurrentDictionary<string, Move>(
             concurrencyLevel,
@@ -73,6 +89,7 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
         {
             var (r, c) = anchor;
 
+            // Generate both horizontal and vertical moves from each anchor.
             GenerateFromAnchor(r, c, true, new RackCounts(rackLetters), ctx, results);
             GenerateFromAnchor(r, c, false, new RackCounts(rackLetters), ctx, results);
         });
@@ -80,37 +97,38 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
         return results.Values.ToList();
     }
 
-    #region ----------  Pre-computation  ----------
-
+    /// <summary>
+    ///     Pre-computes the <see cref="CrossCheckMatrix" /> for the entire board.
+    /// </summary>
     private static CrossCheckMatrix PrecomputeCrossChecks(Board board, DictionaryTrie dictionary)
     {
         int boardRows = board.Rows, boardCols = board.Cols;
         var horiz = new uint[boardRows, boardCols];
         var vert = new uint[boardRows, boardCols];
 
-        Span<char> buf = stackalloc char[Math.Min(board.Rows, board.Cols)];
+        Span<char> buf = stackalloc char[Math.Max(board.Rows, board.Cols)];
 
         for (var r = 0; r < boardRows; r++)
         for (var c = 0; c < boardCols; c++)
         {
             if (!board.IsEmpty(r, c))
             {
-                horiz[r, c] = vert[r, c] = 0;
+                horiz[r, c] = vert[r, c] = 0; // No placement possible
                 continue;
             }
 
-            // Vertical cross (main word horizontal)
+            // Mask for vertical cross-words (when main move is horizontal)
             horiz[r, c] = ComputeMaskForLine(
                 board, dictionary,
                 r, c,
-                -1, 0, 1, 0,
+                -1, 0, 1, 0, // Above and below
                 buf);
 
-            // Horizontal cross (main word vertical)
+            // Mask for horizontal cross-words (when main move is vertical)
             vert[r, c] = ComputeMaskForLine(
                 board, dictionary,
                 r, c,
-                0, -1, 0, 1,
+                0, -1, 0, 1, // Left and right
                 buf);
         }
 
@@ -118,8 +136,7 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
     }
 
     /// <summary>
-    ///     Returns bit-mask of A–Z letters legal at (<paramref name="row" />,<paramref name="col" />) for the
-    ///     perpendicular word defined by the two directional vectors.
+    ///     Computes the cross-check mask for a single empty square.
     /// </summary>
     private static uint ComputeMaskForLine(
         Board board, DictionaryTrie dict,
@@ -128,7 +145,7 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
         int dR2, int dC2,
         Span<char> buf)
     {
-        // Locate start of existing string segment
+        // Find the start and end of the potential cross-word.
         int sR = row, sC = col;
         while (IsInsideBoard(sR + dR1, sC + dC1, board) && !board.IsEmpty(sR + dR1, sC + dC1))
         {
@@ -136,7 +153,6 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
             sC += dC1;
         }
 
-        // Locate end
         int eR = row, eC = col;
         while (IsInsideBoard(eR + dR2, eC + dC2, board) && !board.IsEmpty(eR + dR2, eC + dC2))
         {
@@ -144,31 +160,27 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
             eC += dC2;
         }
 
-        // Compute length and early-exit for single-letter cross
+        // Build the word pattern with a placeholder for the new tile.
         var len = 0;
-        for (int r = sR, c = sC;
-             !(r == eR && c == eC);
-             r += dR2, c += dC2) len++;
+        for (int r = sR, c = sC; !(r == eR && c == eC); r += dR2, c += dC2) len++;
         len++; // include end square
 
-        if (len == 1) return AllMask; // single letter has no perpendicular word
+        if (len == 1) return AllMask; // No existing tiles, so any letter is valid for a 1-letter cross-word.
 
-        // Copy into buffer, mark target with placeholder.
         var idx = 0;
-        for (int r = sR, c = sC;
-             idx < len;
-             r += dR2, c += dC2, idx++)
+        for (int r = sR, c = sC; idx < len; r += dR2, c += dC2, idx++)
             buf[idx] = r == row && c == col
-                ? '#'
+                ? '#' // Placeholder
                 : board.GetSquare(r, c).Letter!.Value;
 
+        // Test each letter (A-Z) in the placeholder position.
         uint mask = 0;
         for (var L = 'A'; L <= 'Z'; L++)
         {
             buf[IndexOfTarget(row, col, sR, sC, dR2, dC2)] = L;
 
-            ReadOnlySpan<char> span = buf.Slice(0, len); // **corrected line**
-            if (dict.Contains(span)) // fast exact-word check
+            ReadOnlySpan<char> span = buf.Slice(0, len);
+            if (dict.Contains(span))
                 mask |= 1u << (L - 'A');
         }
 
@@ -188,10 +200,9 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
         }
     }
 
-    #endregion
-
-    #region ----------  Anchor-driven generation ----------
-
+    /// <summary>
+    ///     Kicks off the recursive generation process for a single anchor.
+    /// </summary>
     private void GenerateFromAnchor(
         int anchorRow, int anchorCol,
         bool isHorizontal,
@@ -204,6 +215,7 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
         var trie = ctx.Dictionary.Root;
         int r = anchorRow - dR, c = anchorCol - dC;
 
+        // If there's an existing word part before the anchor, advance the trie node.
         if (HasExistingPrefix(r, c, isHorizontal, ctx, out var prefix))
             trie = prefix;
 
@@ -213,6 +225,9 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
             ctx, results, isHorizontal);
     }
 
+    /// <summary>
+    ///     Traverses the trie for an existing prefix of letters on the board.
+    /// </summary>
     private bool HasExistingPrefix(
         int startR, int startC,
         bool horiz,
@@ -222,18 +237,25 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
         var (dR, dC) = horiz ? (0, 1) : (1, 0);
         var sb = new StringBuilder();
 
-        for (int r = startR, c = startC;
-             IsInsideBoard(r, c, ctx.Board) && !ctx.Board.IsEmpty(r, c);
-             r -= dR, c -= dC)
+        // Build the prefix string by walking backwards from the start position.
+        int r = startR, c = startC;
+        while (IsInsideBoard(r, c, ctx.Board) && !ctx.Board.IsEmpty(r, c))
+        {
             sb.Insert(0, ctx.Board.GetSquare(r, c).Letter!.Value);
+            r -= dR;
+            c -= dC;
+        }
 
         node = ctx.Dictionary.Root;
         foreach (var ch in sb.ToString())
             if (!node.Children.TryGetValue(ch, out node))
-                return false;
+                return false; // Invalid prefix
         return true;
     }
 
+    /// <summary>
+    ///     Recursively generates the part of a word to the left of (or above) an anchor.
+    /// </summary>
     private void GenerateLeftPart(
         int currR, int currC,
         DictionaryTrie.Node trie,
@@ -244,6 +266,7 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
         IDictionary<string, Move> results,
         bool horiz)
     {
+        // After building the left part (or if there is no left part), extend to the right.
         ExtendRight(anchor.Row, anchor.Col, trie, rack, placed, anchor, ctx, results, horiz);
 
         if (!IsInsideBoard(currR, currC, ctx.Board) || rack.TilesRemaining == 0) return;
@@ -251,7 +274,7 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
         var (dR, dC) = horiz ? (0, 1) : (1, 0);
 
         foreach (var t in rack.DistinctTiles())
-            if (t == '*')
+            if (t == '*') // Handle blanks
                 for (var sub = 'A'; sub <= 'Z'; sub++)
                     Try(sub, true);
             else
@@ -269,11 +292,15 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
             GenerateLeftPart(currR - dR, currC - dC, nxt, rack, placed,
                 anchor, ctx, results, horiz);
 
+            // Backtrack
             placed.RemoveAt(placed.Count - 1);
             rack.Put(rackTile);
         }
     }
 
+    /// <summary>
+    ///     Recursively generates the part of a word from the anchor onwards (right or down).
+    /// </summary>
     private void ExtendRight(
         int row, int col,
         DictionaryTrie.Node trie,
@@ -287,9 +314,9 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
         var board = ctx.Board;
         if (!IsInsideBoard(row, col, board)) return;
 
-        // Existing board tile
         if (!board.IsEmpty(row, col))
         {
+            // If the square is occupied, traverse the trie with the existing letter.
             var boardL = board.GetSquare(row, col).Letter!.Value;
             if (!trie.Children.TryGetValue(boardL, out var nxt)) return;
 
@@ -299,13 +326,14 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
             return;
         }
 
-        // Empty square → maybe finish word
+        // If we've formed a valid word and placed at least one tile, emit it.
         if (trie.IsWord && placed.Count > 0) EmitMove(placed, anchor, ctx, results, horiz);
 
         if (rack.TilesRemaining == 0) return;
 
+        // Try placing each available rack tile on the current empty square.
         foreach (var t in rack.DistinctTiles())
-            if (t == '*')
+            if (t == '*') // Handle blanks
                 for (var sub = 'A'; sub <= 'Z'; sub++)
                     Try(sub, true);
             else
@@ -324,15 +352,15 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
             ExtendRight(row + dR, col + dC, nxt, rack, placed,
                 anchor, ctx, results, horiz);
 
+            // Backtrack
             placed.RemoveAt(placed.Count - 1);
             rack.Put(rackTile);
         }
     }
 
-    #endregion
-
-    #region ----------  Emit / validation helpers ----------
-
+    /// <summary>
+    ///     Finalizes and records a valid move.
+    /// </summary>
     private void EmitMove(
         List<TilePlacement> placedTiles,
         (int Row, int Col) anchor,
@@ -340,7 +368,7 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
         IDictionary<string, Move> results,
         bool isHorizontal)
     {
-        if (placedTiles.Count == 0) return; // must place at least one tile
+        if (placedTiles.Count == 0) return;
 
         var provisional = new Move
         {
@@ -350,13 +378,8 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
 
         var (word, startRow, startCol) = GetMoveDetails(provisional, context.Board);
 
-        // FIX: Re-validate the word reconstructed from the board.
-        // The generation logic can find a valid path in the trie (e.g., "VIN")
-        // but place the tiles on the board incorrectly to form a different word (e.g., "NIV" or "IVN").
-        // We must ensure the word actually formed on the board is valid before scoring it.
+        // This check can be redundant due to trie traversal but is a safeguard.
         if (!context.Dictionary.IsWordExact(word))
-            // This is not an error, but a consequence of the generator's imperfect left-part generation.
-            // Simply discard the invalid move candidate and continue.
             return;
 
         var move = provisional with
@@ -366,13 +389,14 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
             StartCol = startCol
         };
 
+        // Apply first-move-specific constraints
         if (context.IsFirstMove)
         {
             var coversAnchor = move.Tiles.Any(p => p.Row == anchor.Row && p.Col == anchor.Col);
             if (!coversAnchor || move.Tiles.Count < context.OpeningMinimumLength)
                 return;
         }
-        else
+        else // Subsequent moves must touch an existing tile
         {
             if (!MoveTouchesExisting(context.Board, move))
                 return;
@@ -381,30 +405,36 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
         var score = context.Rules.CalculateMoveScore(context.Board, move);
         var key = MakeKey(move);
 
+        // Add the move if it's new or has a higher score than an existing move for the same play.
         if (!results.TryGetValue(key, out var existing) || score > existing.Score)
             results[key] = move with { Score = score };
     }
 
+    /// <summary>
+    ///     Creates a unique key for a move to prevent duplicates in the results dictionary.
+    /// </summary>
     private static string MakeKey(Move m) =>
         $"{m.Word}:{m.StartRow}:{m.StartCol}:{(m.IsHorizontal ? 'H' : 'V')}";
 
-    private bool IsCrossLegal(int r, int c, char L, bool horiz, MoveGenerationContext ctx)
+    /// <summary>
+    ///     Checks if placing a letter is legal based on the cross-check matrix, using a cache for performance.
+    /// </summary>
+    private bool IsCrossLegal(int r, int c, char l, bool horiz, MoveGenerationContext ctx)
     {
-        var k = (r, c, L, horiz);
+        var k = (r, c, L: l, horiz);
         if (ctx.CrossCache.TryGetValue(k, out var ok)) return ok;
 
-        ok = ctx.CrossChecks.IsAllowed(r, c, L, horiz);
+        ok = ctx.CrossChecks.IsAllowed(r, c, l, horiz);
         ctx.CrossCache[k] = ok;
         return ok;
     }
 
-    #endregion
-
-    #region ----------  Misc utility ----------
-
     private static bool IsInsideBoard(int r, int c, Board b)
         => r >= 0 && c >= 0 && r < b.Rows && c < b.Cols;
 
+    /// <summary>
+    ///     Checks if the board is completely empty.
+    /// </summary>
     private static bool IsBoardEmpty(Board b)
     {
         for (var r = 0; r < b.Rows; r++)
@@ -414,6 +444,13 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
         return true;
     }
 
+    /// <summary>
+    ///     Finds all anchor squares on the board.
+    /// </summary>
+    /// <remarks>
+    ///     If it's the first move, the only anchor is the center square. Otherwise, an anchor
+    ///     is any empty square that is adjacent (horizontally or vertically) to a tile.
+    /// </remarks>
     private static List<(int, int)> FindAnchors(MoveGenerationContext ctx)
     {
         var list = new List<(int, int)>();
@@ -436,30 +473,35 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
         return list;
     }
 
+    /// <summary>
+    ///     Verifies that a move is connected to existing tiles on the board.
+    /// </summary>
     private static bool MoveTouchesExisting(Board b, Move m)
     {
         var (dR, dC) = m.IsHorizontal ? (0, 1) : (1, 0);
         var newT = m.Tiles.ToDictionary(t => (t.Row, t.Col));
 
+        // Check if the main word incorporates any existing tiles
         for (int r = m.StartRow, c = m.StartCol;
              IsInsideBoard(r, c, b) && (!b.IsEmpty(r, c) || newT.ContainsKey((r, c)));
              r += dR, c += dC)
             if (!newT.ContainsKey((r, c)) && !b.IsEmpty(r, c))
                 return true;
 
-        foreach (var t in m.Tiles)
-            if ((IsInsideBoard(t.Row - 1, t.Col, b) && !b.IsEmpty(t.Row - 1, t.Col)) ||
-                (IsInsideBoard(t.Row + 1, t.Col, b) && !b.IsEmpty(t.Row + 1, t.Col)) ||
-                (IsInsideBoard(t.Row, t.Col - 1, b) && !b.IsEmpty(t.Row, t.Col - 1)) ||
-                (IsInsideBoard(t.Row, t.Col + 1, b) && !b.IsEmpty(t.Row, t.Col + 1)))
-                return true;
-        return false;
+        // Check if any new tile is adjacent to an existing tile (forming a cross-word)
+        return m.Tiles.Any(t =>
+            (IsInsideBoard(t.Row - 1, t.Col, b) && !b.IsEmpty(t.Row - 1, t.Col)) || (IsInsideBoard(t.Row + 1, t.Col, b) && !b.IsEmpty(t.Row + 1, t.Col)) ||
+            (IsInsideBoard(t.Row, t.Col - 1, b) && !b.IsEmpty(t.Row, t.Col - 1)) || (IsInsideBoard(t.Row, t.Col + 1, b) && !b.IsEmpty(t.Row, t.Col + 1)));
     }
 
+    /// <summary>
+    ///     Reconstructs the full details of a move (word, start position) from the list of placed tiles.
+    /// </summary>
     private static (string, int, int) GetMoveDetails(Move m, Board b)
     {
         var (dR, dC) = m.IsHorizontal ? (0, 1) : (1, 0);
 
+        // Find the true start of the word, which may be before the first placed tile.
         int sr = m.Tiles.Min(t => t.Row), sc = m.Tiles.Min(t => t.Col);
         while (IsInsideBoard(sr - dR, sc - dC, b) && !b.IsEmpty(sr - dR, sc - dC))
         {
@@ -470,12 +512,11 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
         var placed = m.Tiles.ToDictionary(tp => (tp.Row, tp.Col));
         var sb = new StringBuilder();
 
+        // Build the full word string by iterating from the start position.
         for (int r = sr, c = sc; IsInsideBoard(r, c, b); r += dR, c += dC)
             if (placed.TryGetValue((r, c), out var tp)) sb.Append(tp.Letter);
             else if (!b.IsEmpty(r, c)) sb.Append(b.GetSquare(r, c).Letter!.Value);
             else break;
         return (sb.ToString(), sr, sc);
     }
-
-    #endregion
 }
