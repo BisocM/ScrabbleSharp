@@ -20,12 +20,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Content Include="..\.dockerignore">
-            <Link>.dockerignore</Link>
-        </Content>
-    </ItemGroup>
-
-    <ItemGroup>
         <ProjectReference Include="..\ScrabbleSharp.Contracts\ScrabbleSharp.Contracts.csproj"/>
         <ProjectReference Include="..\ScrabbleSharp.Engine\ScrabbleSharp.Engine.csproj"/>
     </ItemGroup>
