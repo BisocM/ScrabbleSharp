@@ -79,22 +79,39 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
                 .ToList();
 
         var concurrencyLevel = Environment.ProcessorCount;
-        var results = new ConcurrentDictionary<string, Move>(
-            concurrencyLevel,
-            InitialResultCapacity,
-            StringComparer.Ordinal);
-
+        var resultsBag = new ConcurrentBag<List<Move>>();
         var po = new ParallelOptions { MaxDegreeOfParallelism = concurrencyLevel };
-        Parallel.ForEach(anchors, po, anchor =>
+
+        // Use a parallel foreach with thread-local storage to minimize lock contention.
+        Parallel.ForEach(anchors, po,
+            () => new List<Move>(InitialResultCapacity / concurrencyLevel), // Init thread-local list
+            (anchor, _, localList) =>
+            {
+                // Each thread gets its own dictionary to avoid concurrent writes.
+                var threadResults = new Dictionary<string, Move>();
+                var (r, c) = anchor;
+
+                // Generate both horizontal and vertical moves from each anchor.
+                GenerateFromAnchor(r, c, true, new RackCounts(rackLetters), ctx, threadResults);
+                GenerateFromAnchor(r, c, false, new RackCounts(rackLetters), ctx, threadResults);
+
+                localList.AddRange(threadResults.Values);
+                return localList;
+            },
+            resultsBag.Add // Add the completed thread-local list to the bag
+        );
+
+        // Merge results from all threads into a final dictionary to handle duplicates across threads.
+        var finalResults = new Dictionary<string, Move>(InitialResultCapacity);
+        foreach (var list in resultsBag)
+        foreach (var move in list)
         {
-            var (r, c) = anchor;
+            var key = MakeKey(move);
+            if (!finalResults.TryGetValue(key, out var existing) || move.Score > existing.Score)
+                finalResults[key] = move;
+        }
 
-            // Generate both horizontal and vertical moves from each anchor.
-            GenerateFromAnchor(r, c, true, new RackCounts(rackLetters), ctx, results);
-            GenerateFromAnchor(r, c, false, new RackCounts(rackLetters), ctx, results);
-        });
-
-        return results.Values.ToList();
+        return finalResults.Values.ToList();
     }
 
     /// <summary>
@@ -136,13 +153,13 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
     }
 
     /// <summary>
-    ///     Computes the cross-check mask for a single empty square.
+    ///     Computes the cross-check mask for a single empty square by intelligently traversing the dictionary trie.
     /// </summary>
     private static uint ComputeMaskForLine(
         Board board, DictionaryTrie dict,
         int row, int col,
-        int dR1, int dC1,
-        int dR2, int dC2,
+        int dR1, int dC1, // Direction for prefix
+        int dR2, int dC2, // Direction for suffix
         Span<char> buf)
     {
         // Find the start and end of the potential cross-word.
@@ -160,44 +177,60 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
             eC += dC2;
         }
 
-        // Build the word pattern with a placeholder for the new tile.
-        var len = 0;
-        for (int r = sR, c = sC; !(r == eR && c == eC); r += dR2, c += dC2) len++;
-        len++; // include end square
+        // If there's no existing word part, any letter can be placed.
+        if (sR == row && sC == col && eR == row && eC == col) return AllMask;
 
-        if (len == 1) return AllMask; // No existing tiles, so any letter is valid for a 1-letter cross-word.
+        // Extract the prefix (letters before the empty square).
+        var prefixLen = 0;
+        for (int r = sR, c = sC; r != row || c != col; r += dR2, c += dC2)
+            buf[prefixLen++] = board.GetSquare(r, c).Letter!.Value;
+        var prefixSpan = buf.Slice(0, prefixLen);
 
-        var idx = 0;
-        for (int r = sR, c = sC; idx < len; r += dR2, c += dC2, idx++)
-            buf[idx] = r == row && c == col
-                ? '#' // Placeholder
-                : board.GetSquare(r, c).Letter!.Value;
+        // Extract the suffix (letters after the empty square).
+        var suffixLen = 0;
+        for (int r = row + dR2, c = col + dC2; r != eR + dR2 || c != eC + dC2; r += dR2, c += dC2)
+            buf[suffixLen++] = board.GetSquare(r, c).Letter!.Value;
+        var suffixSpan = buf.Slice(0, suffixLen);
 
-        // Test each letter (A-Z) in the placeholder position.
+        // 1. Traverse to the end of the prefix.
+        var prefixNode = FindNode(dict.Root, prefixSpan);
+        if (prefixNode is null) return 0; // Prefix doesn't exist.
+
         uint mask = 0;
         for (var L = 'A'; L <= 'Z'; L++)
-        {
-            buf[IndexOfTarget(row, col, sR, sC, dR2, dC2)] = L;
-
-            ReadOnlySpan<char> span = buf.Slice(0, len);
-            if (dict.Contains(span))
-                mask |= 1u << (L - 'A');
-        }
+            // 2. Check if the current letter is a valid child.
+            if (prefixNode.Children.TryGetValue(L, out var nextNode))
+                // 3. From the new node, check if the suffix completes a word.
+                if (SuffixFormsWord(nextNode, suffixSpan))
+                    mask |= 1u << (L - 'A');
 
         return mask;
+    }
 
-        static int IndexOfTarget(int row, int col, int sR, int sC, int dR, int dC)
-        {
-            int idx = 0, r = sR, c = sC;
-            while (!(r == row && c == col))
-            {
-                r += dR;
-                c += dC;
-                idx++;
-            }
+    /// <summary>
+    ///     Traverses a trie from a start node to find the node corresponding to a prefix.
+    /// </summary>
+    private static DictionaryTrie.Node? FindNode(DictionaryTrie.Node startNode, ReadOnlySpan<char> prefix)
+    {
+        var currentNode = startNode;
+        foreach (var character in prefix)
+            if (!currentNode.Children.TryGetValue(character, out currentNode))
+                return null;
 
-            return idx;
-        }
+        return currentNode;
+    }
+
+    /// <summary>
+    ///     Checks if a suffix exists from a start node and forms a valid word.
+    /// </summary>
+    private static bool SuffixFormsWord(DictionaryTrie.Node startNode, ReadOnlySpan<char> suffix)
+    {
+        var currentNode = startNode;
+        foreach (var character in suffix)
+            if (!currentNode.Children.TryGetValue(character, out currentNode))
+                return false;
+
+        return currentNode.IsWord;
     }
 
     /// <summary>
@@ -212,21 +245,21 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
     {
         var (dR, dC) = isHorizontal ? (0, 1) : (1, 0);
 
-        var trie = ctx.Dictionary.Root;
         int r = anchorRow - dR, c = anchorCol - dC;
 
         // If there's an existing word part before the anchor, advance the trie node.
-        if (HasExistingPrefix(r, c, isHorizontal, ctx, out var prefix))
-            trie = prefix;
-
-        GenerateLeftPart(r, c, trie, rack,
-            new List<TilePlacement>(),
-            (anchorRow, anchorCol),
-            ctx, results, isHorizontal);
+        if (HasExistingPrefix(r, c, isHorizontal, ctx, out var trie))
+            GenerateLeftPart(r, c, trie, rack,
+                new List<TilePlacement>(),
+                (anchorRow, anchorCol),
+                ctx, results, isHorizontal);
     }
 
     /// <summary>
-    ///     Traverses the trie for an existing prefix of letters on the board.
+    ///     Traverses the trie for an existing prefix of letters on the board without string allocations.
+    /// </summary>
+    /// <summary>
+    ///     Traverses the trie for an existing prefix of letters on the board without string allocations.
     /// </summary>
     private bool HasExistingPrefix(
         int startR, int startC,
@@ -234,24 +267,40 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
         MoveGenerationContext ctx,
         out DictionaryTrie.Node node)
     {
-        var (dR, dC) = horiz ? (0, 1) : (1, 0);
-        var sb = new StringBuilder();
+        node = ctx.Dictionary.Root;
+        // If the square we start checking from is off the board or empty, there can be no prefix.
+        if (!IsInsideBoard(startR, startC, ctx.Board) || ctx.Board.IsEmpty(startR, startC))
+            return true;
 
-        // Build the prefix string by walking backwards from the start position.
-        int r = startR, c = startC;
-        while (IsInsideBoard(r, c, ctx.Board) && !ctx.Board.IsEmpty(r, c))
+        var (dR, dC) = horiz ? (0, 1) : (1, 0);
+
+        // Find the actual start of the prefix segment by walking backwards.
+        int prefixStartR = startR, prefixStartC = startC;
+        while (IsInsideBoard(prefixStartR - dR, prefixStartC - dC, ctx.Board) &&
+               !ctx.Board.IsEmpty(prefixStartR - dR, prefixStartC - dC))
         {
-            sb.Insert(0, ctx.Board.GetSquare(r, c).Letter!.Value);
-            r -= dR;
-            c -= dC;
+            prefixStartR -= dR;
+            prefixStartC -= dC;
         }
 
-        node = ctx.Dictionary.Root;
-        foreach (var ch in sb.ToString())
-            if (!node.Children.TryGetValue(ch, out node))
-                return false; // Invalid prefix
+        // Now walk forward from the real start of the prefix, traversing the trie.
+        for (int r = prefixStartR, c = prefixStartC;; r += dR, c += dC)
+        {
+            var letter = ctx.Board.GetSquare(r, c).Letter!.Value;
+            if (!node.Children.TryGetValue(letter, out node))
+            {
+                // This case should not be reachable if the board contains valid words.
+                return false;
+            }
+
+            // We've processed the last character of the prefix; break successfully.
+            if (r == startR && c == startC)
+                break;
+        }
+
         return true;
     }
+
 
     /// <summary>
     ///     Recursively generates the part of a word to the left of (or above) an anchor.
@@ -266,11 +315,11 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
         IDictionary<string, Move> results,
         bool horiz)
     {
-        // After building the left part (or if there is no left part), extend to the right.
         ExtendRight(anchor.Row, anchor.Col, trie, rack, placed, anchor, ctx, results, horiz);
 
-        if (!IsInsideBoard(currR, currC, ctx.Board) || rack.TilesRemaining == 0) return;
+        if (!IsInsideBoard(currR, currC, ctx.Board) || rack.TilesRemaining == 0 || placed.Count > 0) return;
 
+        // Define the direction vectors based on the move's orientation.
         var (dR, dC) = horiz ? (0, 1) : (1, 0);
 
         foreach (var t in rack.DistinctTiles())
@@ -289,10 +338,10 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
             rack.Take(rackTile);
             placed.Add(new TilePlacement(currR, currC, L, blank));
 
+            // The recursive call now correctly references dR and dC.
             GenerateLeftPart(currR - dR, currC - dC, nxt, rack, placed,
                 anchor, ctx, results, horiz);
 
-            // Backtrack
             placed.RemoveAt(placed.Count - 1);
             rack.Put(rackTile);
         }
@@ -377,10 +426,6 @@ public sealed class MoveGenerator(ILogger<MoveGenerator> logger)
         };
 
         var (word, startRow, startCol) = GetMoveDetails(provisional, context.Board);
-
-        // This check can be redundant due to trie traversal but is a safeguard.
-        if (!context.Dictionary.IsWordExact(word))
-            return;
 
         var move = provisional with
         {
